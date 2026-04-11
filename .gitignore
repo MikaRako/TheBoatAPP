@@ -1,0 +1,31 @@
+# Environment
+.env
+*.env.local
+
+# Generated from template at container startup
+keycloak/realm-export.json
+
+# Java / Maven
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+*.war
+
+# Node / Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker volumes
+postgres_data/
