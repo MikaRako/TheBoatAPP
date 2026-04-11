@@ -7,7 +7,15 @@ services:
     image: postgres:15-alpine
     container_name: boat-postgres
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    command: ["postgres", "-c", "timezone=Europe/Zurich"]
     environment:
+      TZ: ${TZ:-Europe/Zurich}
+      PGTZ: ${TZ:-Europe/Zurich}
       POSTGRES_DB: ${DB_NAME:-boatdb}
       POSTGRES_USER: ${DB_USER:-boatuser}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-boatpassword}
@@ -29,6 +37,11 @@ services:
     image: quay.io/keycloak/keycloak:23.0
     container_name: boat-keycloak
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     entrypoint:
       - /bin/sh
       - -c
@@ -41,6 +54,7 @@ services:
         > /opt/keycloak/data/import/realm-export.json &&
         /opt/keycloak/bin/kc.sh start-dev --import-realm
     environment:
+      TZ: ${TZ:-Europe/Zurich}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-boatdb}
       KC_DB_USERNAME: ${DB_USER:-boatuser}
@@ -52,6 +66,7 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_PROXY: edge
       KC_HEALTH_ENABLED: "true"
+      KC_LOG_CONSOLE_FORMAT: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5p [boat-keycloak] %c{36} - %s%e%n"
       KC_BOATUSER_PASSWORD: ${KC_BOATUSER_PASSWORD}
       KC_BOATADMIN_PASSWORD: ${KC_BOATADMIN_PASSWORD}
     volumes:
@@ -77,7 +92,13 @@ services:
       dockerfile: Dockerfile
     container_name: boat-backend
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
+      TZ: ${TZ:-Europe/Zurich}
       SERVER_PORT: 8081
       DB_HOST: postgres
       DB_PORT: 5432
@@ -112,6 +133,13 @@ services:
       dockerfile: Dockerfile
     container_name: boat-frontend
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      TZ: ${TZ:-Europe/Zurich}
     ports:
       - "4200:80"
     depends_on:

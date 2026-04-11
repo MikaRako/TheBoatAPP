@@ -40,6 +40,8 @@ springdoc:
     tokenUrl: ${KEYCLOAK_TOKEN_URL:http://localhost:8080/realms/boat-realm/protocol/openid-connect/token}
 
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [boat-backend] [%X{user}] %logger{36} - %msg%n"
   level:
     com.boatmanagement: DEBUG
     org.springframework.security: INFO
