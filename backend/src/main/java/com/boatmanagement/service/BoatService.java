@@ -7,6 +7,7 @@ import com.boatmanagement.mapper.BoatMapper;
 import com.boatmanagement.repository.BoatRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,7 +25,7 @@ public class BoatService {
     private final BoatMapper boatMapper;
 
     public BoatDto.PageResponse findAll(String search, int page, int size, String sortBy, String sortDir) {
-        log.debug("Finding all boats - search: {}, page: {}, size: {}", search, page, size);
+        log.debug("Finding all boats - search: '{}', page: {}, size: {} by '{}'", search, page, size, MDC.get("user"));
 
         Sort sort = sortDir.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending()
@@ -44,7 +45,7 @@ public class BoatService {
     }
 
     public BoatDto.Response findById(Long id) {
-        log.debug("Finding boat by id: {}", id);
+        log.debug("Finding boat by id: {} by '{}'", id, MDC.get("user"));
         return boatRepository.findById(id)
                 .map(boatMapper::toResponse)
                 .orElseThrow(() -> new BoatNotFoundException(id));
@@ -52,31 +53,31 @@ public class BoatService {
 
     @Transactional
     public BoatDto.Response create(BoatDto.Request request) {
-        log.debug("Creating new boat: {}", request.getName());
+        log.debug("Creating new boat: '{}' by '{}'", request.getName(), MDC.get("user"));
         Boat boat = boatMapper.toEntity(request);
         Boat saved = boatRepository.save(boat);
-        log.info("Boat created with id: {}", saved.getId());
+        log.info("Boat created with id: {} by '{}'", saved.getId(), MDC.get("user"));
         return boatMapper.toResponse(saved);
     }
 
     @Transactional
     public BoatDto.Response update(Long id, BoatDto.Request request) {
-        log.debug("Updating boat with id: {}", id);
+        log.debug("Updating boat with id: {} by '{}'", id, MDC.get("user"));
         Boat boat = boatRepository.findById(id)
                 .orElseThrow(() -> new BoatNotFoundException(id));
         boatMapper.updateEntity(boat, request);
         Boat saved = boatRepository.save(boat);
-        log.info("Boat updated with id: {}", saved.getId());
+        log.info("Boat updated with id: {} by '{}'", saved.getId(), MDC.get("user"));
         return boatMapper.toResponse(saved);
     }
 
     @Transactional
     public void delete(Long id) {
-        log.debug("Deleting boat with id: {}", id);
+        log.debug("Deleting boat with id: {} by '{}'", id, MDC.get("user"));
         if (!boatRepository.existsById(id)) {
             throw new BoatNotFoundException(id);
         }
         boatRepository.deleteById(id);
-        log.info("Boat deleted with id: {}", id);
+        log.info("Boat deleted with id: {} by '{}'", id, MDC.get("user"));
     }
 }
