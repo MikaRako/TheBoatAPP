@@ -25,16 +25,21 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * Testing strategy — Output Adapter (Persistence):
  *
- * These tests verify the persistence adapter in isolation using a real PostgreSQL
+ * These tests verify the persistence adapter in isolation using a real
+ * PostgreSQL
  * database managed by TestContainers. This ensures our JPQL queries, Hibernate
  * mappings, and column constraints behave exactly as they would in production.
  *
  * @DataJpaTest loads only the JPA slice (entities, repositories), making tests
- * significantly faster than a full @SpringBootTest while still using real SQL.
+ *              significantly faster than a full @SpringBootTest while still
+ *              using real SQL.
  * @AutoConfigureTestDatabase(replace=NONE) prevents Spring from swapping in H2.
  *
- * Each @Nested class covers one group of repository operations.
- * A @BeforeEach clears the table so tests are fully isolated from one another.
+ *                                          Each @Nested class covers one group
+ *                                          of repository operations.
+ *                                          A @BeforeEach clears the table so
+ *                                          tests are fully isolated from one
+ *                                          another.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -69,7 +74,7 @@ class BoatRepositoryTest {
     // ---------------------------------------------------------------------------
 
     private Boat saveBoat(String name, String description) {
-        return boatRepository.save(Boat.builder().name(name).description(description).build());
+        return boatRepository.saveAndFlush(Boat.builder().name(name).description(description).build());
     }
 
     // ---------------------------------------------------------------------------
@@ -196,7 +201,7 @@ class BoatRepositoryTest {
         void should_notAffectOtherBoats_when_oneBoatIsDeleted() {
             // Arrange
             Boat toDelete = saveBoat("Delete Me", "Gone");
-            Boat toKeep   = saveBoat("Keep Me", "Stays");
+            Boat toKeep = saveBoat("Keep Me", "Stays");
 
             // Act
             boatRepository.deleteById(toDelete.getId());
@@ -266,7 +271,7 @@ class BoatRepositoryTest {
         void should_returnMatchingBoats_when_searchIsPartialNameMatch() {
             // Arrange
             saveBoat("Sea Explorer", "A sailing boat");
-            saveBoat("Sea Breeze",   "A fast boat");
+            saveBoat("Sea Breeze", "A fast boat");
             saveBoat("River Runner", "A river boat");
 
             // Act
@@ -300,7 +305,7 @@ class BoatRepositoryTest {
         void should_returnMatchingBoat_when_searchIsPartialDescriptionMatch() {
             // Arrange
             saveBoat("Fancy Vessel", "This is a grand touring yacht");
-            saveBoat("Simple Boat",  "Basic transportation");
+            saveBoat("Simple Boat", "Basic transportation");
 
             // Act
             Page<Boat> result = boatRepository.findBySearchTerm("touring", PageRequest.of(0, 10));
@@ -428,7 +433,7 @@ class BoatRepositoryTest {
             // Arrange
             saveBoat("Zebra Boat", "Z");
             saveBoat("Alpha Boat", "A");
-            saveBoat("Mike Boat",  "M");
+            saveBoat("Mike Boat", "M");
 
             // Act
             Page<Boat> result = boatRepository.findBySearchTerm("",
@@ -445,7 +450,7 @@ class BoatRepositoryTest {
             // Arrange
             saveBoat("Zebra Boat", "Z");
             saveBoat("Alpha Boat", "A");
-            saveBoat("Mike Boat",  "M");
+            saveBoat("Mike Boat", "M");
 
             // Act
             Page<Boat> result = boatRepository.findBySearchTerm("",
