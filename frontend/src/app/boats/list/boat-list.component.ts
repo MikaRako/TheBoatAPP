@@ -573,6 +573,9 @@ type StatusFilter = 'all' | 'active' | 'maintenance' | 'drydock';
       font-weight: 700;
       color: var(--color-text);
       line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* Subtitle / description */

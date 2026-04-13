@@ -196,6 +196,8 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       font-weight: 700;
       color: white;
       line-height: 1.2;
+      word-break: break-word;
+      overflow-wrap: break-word;
     }
     .hero-id {
       font-size: 0.8rem;

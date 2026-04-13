@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
@@ -52,11 +52,11 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Boat Name *</mat-label>
             <mat-icon matPrefix>directions_boat</mat-icon>
-            <input matInput formControlName="name" placeholder="e.g. Sea Explorer" maxlength="255" />
-            <mat-hint align="end">{{ boatForm.get('name')?.value?.length || 0 }}/255</mat-hint>
+            <input matInput formControlName="name" placeholder="e.g. Sea Explorer" maxlength="40" />
+            <mat-hint align="end">{{ boatForm.get('name')?.value?.length || 0 }}/40</mat-hint>
             <mat-error *ngIf="boatForm.get('name')?.hasError('required')">Name is required</mat-error>
             <mat-error *ngIf="boatForm.get('name')?.hasError('minlength')">Name must be at least 1 character</mat-error>
-            <mat-error *ngIf="boatForm.get('name')?.hasError('maxlength')">Name must not exceed 255 characters</mat-error>
+            <mat-error *ngIf="boatForm.get('name')?.hasError('maxlength')">Name must not exceed 40 characters</mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="full-width">
@@ -164,7 +164,7 @@ export class BoatFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.boatForm = this.fb.group({
-      name: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(255)]],
+      name: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(40)]],
       description: ['', [Validators.maxLength(2000)]]
     });
 
