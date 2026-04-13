@@ -1,15 +1,14 @@
 import { Component, HostListener } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
-import { CommonModule } from '@angular/common';
+import { RouterOutlet, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from './shared/services/auth.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive, CommonModule, MatIconModule],
+  imports: [RouterOutlet, RouterLink, MatIconModule],
   template: `
-    <ng-container *ngIf="authService.isAuthenticated(); else authOnly">
+    @if (authService.isAuthenticated()) {
       <nav class="top-nav">
         <a class="nav-brand" routerLink="/boats">
           <div class="nav-logo">
@@ -27,7 +26,8 @@ import { AuthService } from './shared/services/auth.service';
             <mat-icon class="pill-chevron">expand_more</mat-icon>
           </button>
 
-          <div class="user-dropdown" *ngIf="menuOpen" (click)="$event.stopPropagation()">
+          @if (menuOpen) {
+          <div class="user-dropdown" (click)="$event.stopPropagation()">
             <div class="dropdown-header">
               <div class="dropdown-avatar">{{ userInitial }}</div>
               <div class="dropdown-info">
@@ -41,17 +41,16 @@ import { AuthService } from './shared/services/auth.service';
               Sign out
             </button>
           </div>
+          }
         </div>
       </nav>
 
       <main class="main-content">
         <router-outlet />
       </main>
-    </ng-container>
-
-    <ng-template #authOnly>
+    } @else {
       <router-outlet />
-    </ng-template>
+    }
   `,
   styles: [`
     .top-nav {

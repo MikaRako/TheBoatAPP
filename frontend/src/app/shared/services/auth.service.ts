@@ -1,12 +1,15 @@
 import { Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { OAuthService, AuthConfig } from 'angular-oauth2-oidc';
+import { Subject } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private _isAuthenticated = signal(false);
   private _userName = signal('');
+  private tokenReceived$ = new Subject<void>();
+  readonly onTokenReceived$ = this.tokenReceived$.asObservable();
 
   constructor(
     private oauthService: OAuthService,
@@ -34,7 +37,7 @@ export class AuthService {
       responseType: environment.keycloak.responseType,
       showDebugInformation: environment.keycloak.showDebugInformation,
       clearHashAfterLogin: true,
-      requireHttps: false,
+      requireHttps: false, // Keycloak is served over HTTP in this deployment (nginx handles TLS termination externally)
     };
 
     this.oauthService.configure(authConfig);
@@ -57,8 +60,10 @@ export class AuthService {
       if (this._isAuthenticated()) {
         const claims = this.oauthService.getIdentityClaims() as any;
         this._userName.set(claims?.['preferred_username'] || claims?.['name'] || 'User');
-        this.router.navigate(['/boats']);
-        try { window.dispatchEvent(new Event('auth:token_received')); } catch {}
+        const returnUrl = sessionStorage.getItem('auth_return_url') ?? '/boats';
+        sessionStorage.removeItem('auth_return_url');
+        this.router.navigateByUrl(returnUrl);
+        this.tokenReceived$.next();
       }
       // Do not auto-redirect to Keycloak — let the auth guard send
       // unauthenticated users to the custom /login page instead.
@@ -80,7 +85,7 @@ export class AuthService {
       if (event.type === 'token_received') {
         const claims = this.oauthService.getIdentityClaims() as any;
         this._userName.set(claims?.['preferred_username'] || 'User');
-        try { window.dispatchEvent(new Event('auth:token_received')); } catch {}
+        this.tokenReceived$.next();
       }
       if (event.type === 'session_terminated' || event.type === 'token_expires') {
         this.login();
@@ -89,7 +94,8 @@ export class AuthService {
   }
 
 
-  login(): void {
+  login(returnUrl = '/boats'): void {
+    sessionStorage.setItem('auth_return_url', returnUrl);
     this.oauthService.initCodeFlow();
   }
 

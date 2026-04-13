@@ -48,8 +48,8 @@ export class BoatService {
   ): Observable<BoatPage> {
     let params = new HttpParams()
       .set('search', search)
-      .set('page', page.toString())
-      .set('size', size.toString())
+      .set('page', page)
+      .set('size', size)
       .set('sortBy', sortBy)
       .set('sortDir', sortDir);
     if (status) params = params.set('status', status);

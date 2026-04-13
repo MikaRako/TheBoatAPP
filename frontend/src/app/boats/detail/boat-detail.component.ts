@@ -1,23 +1,30 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { NgClass, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { BoatService, Boat, BoatStatus, BoatType } from '../../shared/services/boat.service';
+import { Subject, takeUntil } from 'rxjs';
+import { BoatService, Boat, BoatType } from '../../shared/services/boat.service';
+import { AuthService } from '../../shared/services/auth.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner.component';
+import { StatusLabelPipe } from '../../shared/pipes/status-label.pipe';
+import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
 
 @Component({
   selector: 'app-boat-detail',
   standalone: true,
   imports: [
-    CommonModule,
+    NgClass,
+    DatePipe,
     RouterLink,
     MatIconModule,
     MatDialogModule,
     MatSnackBarModule,
-    LoadingSpinnerComponent
+    LoadingSpinnerComponent,
+    StatusLabelPipe,
+    StatusClassPipe
   ],
   template: `
     <div class="detail-page">
@@ -30,66 +37,72 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
         </a>
       </div>
 
-      <app-loading-spinner *ngIf="loading" message="Loading vessel details..." />
+      @if (loading) {
+        <app-loading-spinner message="Loading vessel details..." />
+      }
 
       <!-- Error -->
-      <div *ngIf="error && !loading" class="state-card">
-        <mat-icon class="state-icon error-icon">error_outline</mat-icon>
-        <h3>{{ error }}</h3>
-        <a class="btn-secondary" routerLink="/boats">Back to Fleet</a>
-      </div>
+      @if (error && !loading) {
+        <div class="state-card">
+          <mat-icon class="state-icon error-icon">error_outline</mat-icon>
+          <h3>{{ error }}</h3>
+          <a class="btn-secondary" routerLink="/boats">Back to Fleet</a>
+        </div>
+      }
 
-      <div *ngIf="boat && !loading" class="detail-layout">
+      @if (boat && !loading) {
+        <div class="detail-layout">
 
-        <!-- Hero card -->
-        <div class="hero-card" [ngClass]="'hero-' + (boat.id % 4)">
-          <div class="hero-watermark">
-            <mat-icon>{{ getTypeIcon(boat.type) }}</mat-icon>
-          </div>
-          <div class="hero-top">
-            <div class="hero-badges">
-              <span class="status-badge" [ngClass]="getStatusClass(boat.status)">
-                {{ getStatusLabel(boat.status) }}
-              </span>
-              <span class="type-badge">{{ getTypeLabel(boat.type) }}</span>
+          <!-- Hero card -->
+          <div class="hero-card" [ngClass]="'hero-' + (boat.id % 4)">
+            <div class="hero-watermark">
+              <mat-icon>{{ getTypeIcon(boat.type) }}</mat-icon>
+            </div>
+            <div class="hero-top">
+              <div class="hero-badges">
+                <span class="status-badge" [ngClass]="boat.status | statusClass">
+                  {{ boat.status | statusLabel }}
+                </span>
+                <span class="type-badge">{{ getTypeLabel(boat.type) }}</span>
+              </div>
+            </div>
+            <div class="hero-bottom">
+              <h1 class="hero-name">{{ boat.name }}</h1>
+              <span class="hero-id">Vessel ID #{{ boat.id }}</span>
             </div>
           </div>
-          <div class="hero-bottom">
-            <h1 class="hero-name">{{ boat.name }}</h1>
-            <span class="hero-id">Vessel ID #{{ boat.id }}</span>
-          </div>
-        </div>
 
-        <!-- Action bar -->
-        <div class="action-bar">
-          <div class="action-date">
-            <mat-icon>schedule</mat-icon>
-            Added {{ boat.createdAt | date:'MMM d, y' }}&nbsp;&middot;&nbsp;{{ boat.createdAt | date:'h:mm a' }}
-          </div>
-          <div class="action-buttons">
-            <a class="btn-edit" [routerLink]="['/boats', boat.id, 'edit']">
-              <mat-icon>edit</mat-icon>
-              Edit Vessel
-            </a>
-            <button class="btn-delete" (click)="confirmDelete()">
-              <mat-icon>delete_outline</mat-icon>
-              Delete Vessel
-            </button>
-          </div>
-        </div>
-
-        <!-- Info cards -->
-        <div class="info-grid">
-          <div class="info-card info-card--full">
-            <div class="info-label">
-              <mat-icon>description</mat-icon>
-              Description
+          <!-- Action bar -->
+          <div class="action-bar">
+            <div class="action-date">
+              <mat-icon>schedule</mat-icon>
+              Added {{ boat.createdAt | date:'MMM d, y' }}&nbsp;&middot;&nbsp;{{ boat.createdAt | date:'h:mm a' }}
             </div>
-            <p class="info-value">{{ boat.description || 'No description provided.' }}</p>
+            <div class="action-buttons">
+              <a class="btn-edit" [routerLink]="['/boats', boat.id, 'edit']">
+                <mat-icon>edit</mat-icon>
+                Edit Vessel
+              </a>
+              <button class="btn-delete" (click)="confirmDelete()">
+                <mat-icon>delete_outline</mat-icon>
+                Delete Vessel
+              </button>
+            </div>
           </div>
-        </div>
 
-      </div>
+          <!-- Info cards -->
+          <div class="info-grid">
+            <div class="info-card info-card--full">
+              <div class="info-label">
+                <mat-icon>description</mat-icon>
+                Description
+              </div>
+              <p class="info-value">{{ boat.description || 'No description provided.' }}</p>
+            </div>
+          </div>
+
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -241,9 +254,9 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       border-radius: 20px;
       width: fit-content;
     }
-    .badge-active   { background: rgba(220,252,231,0.9); color: #16A34A; }
+    .badge-active      { background: rgba(220,252,231,0.9); color: #16A34A; }
     .badge-maintenance { background: rgba(254,243,199,0.9); color: #D97706; }
-    .badge-port     { background: rgba(219,234,254,0.9); color: #2563EB; }
+    .badge-port        { background: rgba(219,234,254,0.9); color: #2563EB; }
 
     /* Action bar */
     .action-bar {
@@ -360,15 +373,13 @@ export class BoatDetailComponent implements OnInit, OnDestroy {
   loading = false;
   error = '';
 
-  private authListener = () => {
-    const id = Number(this.route.snapshot.paramMap.get('id'));
-    if (id) this.loadBoat(id);
-  };
+  private destroy$ = new Subject<void>();
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private boatService: BoatService,
+    private authService: AuthService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef
@@ -377,58 +388,45 @@ export class BoatDetailComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     this.loadBoat(id);
-    window.addEventListener('auth:token_received', this.authListener);
-  }
 
-  getStatusLabel(status: BoatStatus): string {
-    switch (status) {
-      case 'UNDERWAY':    return 'UNDERWAY';
-      case 'IN_PORT':     return 'IN PORT';
-      case 'MAINTENANCE': return 'MAINTENANCE';
-    }
-  }
-
-  getStatusClass(status: BoatStatus): string {
-    switch (status) {
-      case 'UNDERWAY':    return 'badge-active';
-      case 'IN_PORT':     return 'badge-port';
-      case 'MAINTENANCE': return 'badge-maintenance';
-    }
+    this.authService.onTokenReceived$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      const currentId = Number(this.route.snapshot.paramMap.get('id'));
+      if (currentId) this.loadBoat(currentId);
+    });
   }
 
   getTypeLabel(type: BoatType): string {
     switch (type) {
-      case 'SAILBOAT':  return 'Sailboat';
-      case 'TRAWLER':   return 'Trawler';
+      case 'SAILBOAT':   return 'Sailboat';
+      case 'TRAWLER':    return 'Trawler';
       case 'CARGO_SHIP': return 'Cargo Ship';
-      case 'YACHT':     return 'Yacht';
-      case 'FERRY':     return 'Ferry';
+      case 'YACHT':      return 'Yacht';
+      case 'FERRY':      return 'Ferry';
     }
   }
 
   getTypeIcon(type: BoatType): string {
     switch (type) {
-      case 'SAILBOAT':  return 'sailing';
-      case 'TRAWLER':   return 'phishing';
+      case 'SAILBOAT':   return 'sailing';
+      case 'TRAWLER':    return 'phishing';
       case 'CARGO_SHIP': return 'local_shipping';
-      case 'YACHT':     return 'directions_boat';
-      case 'FERRY':     return 'directions_ferry';
+      case 'YACHT':      return 'directions_boat';
+      case 'FERRY':      return 'directions_ferry';
     }
   }
 
   private loadBoat(id: number): void {
     this.loading = true;
-    try { this.cdr.detectChanges(); } catch {}
-    this.boatService.getBoatById(id).subscribe({
+    this.boatService.getBoatById(id).pipe(takeUntil(this.destroy$)).subscribe({
       next: (boat) => {
-        this.boat = boat;
+        this.boat    = boat;
         this.loading = false;
-        try { this.cdr.detectChanges(); } catch {}
+        this.cdr.detectChanges();
       },
       error: (err) => {
-        this.error = err.status === 404 ? 'Vessel not found.' : 'Failed to load vessel details.';
+        this.error   = err.status === 404 ? 'Vessel not found.' : 'Failed to load vessel details.';
         this.loading = false;
-        try { this.cdr.detectChanges(); } catch {}
+        this.cdr.detectChanges();
       }
     });
   }
@@ -436,36 +434,34 @@ export class BoatDetailComponent implements OnInit, OnDestroy {
   confirmDelete(): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Vessel',
-        message: `Are you sure you want to delete "${this.boat?.name}"? This action cannot be undone.`,
+        title:       'Delete Vessel',
+        message:     `Are you sure you want to delete "${this.boat?.name}"? This action cannot be undone.`,
         confirmText: 'Delete',
-        cancelText: 'Cancel',
-        dangerous: true
+        cancelText:  'Cancel',
+        dangerous:   true
       }
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
-      if (confirmed && this.boat) {
-        this.boatService.deleteBoat(this.boat.id).subscribe({
-          next: () => {
-            this.snackBar.open('Vessel deleted successfully', 'Close', {
-              duration: 3000,
-              panelClass: 'success-snackbar'
-            });
-            this.router.navigate(['/boats']);
-          },
-          error: () => {
-            this.snackBar.open('Failed to delete vessel', 'Close', {
-              duration: 3000,
-              panelClass: 'error-snackbar'
-            });
-          }
-        });
-      }
+    dialogRef.afterClosed().pipe(takeUntil(this.destroy$)).subscribe(confirmed => {
+      if (!confirmed || !this.boat) return;
+      this.boatService.deleteBoat(this.boat.id).pipe(takeUntil(this.destroy$)).subscribe({
+        next: () => {
+          this.snackBar.open('Vessel deleted successfully', 'Close', {
+            duration: 3000, panelClass: 'success-snackbar'
+          });
+          this.router.navigate(['/boats']);
+        },
+        error: () => {
+          this.snackBar.open('Failed to delete vessel', 'Close', {
+            duration: 3000, panelClass: 'error-snackbar'
+          });
+        }
+      });
     });
   }
 
   ngOnDestroy(): void {
-    window.removeEventListener('auth:token_received', this.authListener);
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

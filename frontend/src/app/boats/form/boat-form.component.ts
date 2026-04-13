@@ -1,5 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -9,14 +8,15 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { Subject, takeUntil } from 'rxjs';
 import { BoatService } from '../../shared/services/boat.service';
+import { AuthService } from '../../shared/services/auth.service';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner.component';
 
 @Component({
   selector: 'app-boat-form',
   standalone: true,
   imports: [
-    CommonModule,
     RouterLink,
     ReactiveFormsModule,
     MatCardModule,
@@ -33,90 +33,93 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       <div class="breadcrumb">
         <a routerLink="/boats">Fleet</a>
         <mat-icon>chevron_right</mat-icon>
-        <span *ngIf="isEditMode">Edit Boat</span>
-        <span *ngIf="!isEditMode">Add Boat</span>
+        @if (isEditMode) { <span>Edit Boat</span> } @else { <span>Add Boat</span> }
       </div>
 
-      <app-loading-spinner *ngIf="loadingData" message="Loading..." />
+      @if (loadingData) {
+        <app-loading-spinner message="Loading..." />
+      }
 
-      <mat-card class="form-card" *ngIf="!loadingData">
-        <div class="form-header">
-          <div class="form-icon">
-            <mat-icon>{{ isEditMode ? 'edit' : 'add_circle' }}</mat-icon>
+      @if (!loadingData) {
+        <mat-card class="form-card">
+          <div class="form-header">
+            <div class="form-icon">
+              <mat-icon>{{ isEditMode ? 'edit' : 'add_circle' }}</mat-icon>
+            </div>
+            <div>
+              <h1>{{ isEditMode ? 'Edit Boat' : 'Add New Boat' }}</h1>
+              <p>{{ isEditMode ? 'Update the boat information below.' : 'Fill in the details to add a new boat to your fleet.' }}</p>
+            </div>
           </div>
-          <div>
-            <h1>{{ isEditMode ? 'Edit Boat' : 'Add New Boat' }}</h1>
-            <p>{{ isEditMode ? 'Update the boat information below.' : 'Fill in the details to add a new boat to your fleet.' }}</p>
-          </div>
-        </div>
 
-        <form [formGroup]="boatForm" (ngSubmit)="onSubmit()" class="boat-form">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Boat Name *</mat-label>
-            <mat-icon matPrefix>directions_boat</mat-icon>
-            <input matInput formControlName="name" placeholder="e.g. Sea Explorer" maxlength="40" />
-            <mat-hint align="end">{{ boatForm.get('name')?.value?.length || 0 }}/40</mat-hint>
-            <mat-error *ngIf="boatForm.get('name')?.hasError('required')">Name is required</mat-error>
-            <mat-error *ngIf="boatForm.get('name')?.hasError('minlength')">Name must be at least 1 character</mat-error>
-            <mat-error *ngIf="boatForm.get('name')?.hasError('maxlength')">Name must not exceed 40 characters</mat-error>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Description</mat-label>
-            <mat-icon matPrefix>description</mat-icon>
-            <textarea
-              matInput
-              formControlName="description"
-              placeholder="Describe this boat..."
-              rows="4"
-              maxlength="2000">
-            </textarea>
-            <mat-hint align="end">{{ boatForm.get('description')?.value?.length || 0 }}/2000</mat-hint>
-            <mat-error *ngIf="boatForm.get('description')?.hasError('maxlength')">Description must not exceed 2000 characters</mat-error>
-          </mat-form-field>
-
-          <div class="two-col">
+          <form [formGroup]="boatForm" (ngSubmit)="onSubmit()" class="boat-form">
             <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Status *</mat-label>
-              <mat-icon matPrefix>radio_button_checked</mat-icon>
-              <mat-select formControlName="status">
-                <mat-option value="UNDERWAY">Underway</mat-option>
-                <mat-option value="IN_PORT">In Port</mat-option>
-                <mat-option value="MAINTENANCE">Maintenance</mat-option>
-              </mat-select>
-              <mat-error *ngIf="boatForm.get('status')?.hasError('required')">Status is required</mat-error>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Vessel Type *</mat-label>
+              <mat-label>Boat Name *</mat-label>
               <mat-icon matPrefix>directions_boat</mat-icon>
-              <mat-select formControlName="type">
-                <mat-option value="SAILBOAT">Sailboat</mat-option>
-                <mat-option value="TRAWLER">Trawler</mat-option>
-                <mat-option value="CARGO_SHIP">Cargo Ship</mat-option>
-                <mat-option value="YACHT">Yacht</mat-option>
-                <mat-option value="FERRY">Ferry</mat-option>
-              </mat-select>
-              <mat-error *ngIf="boatForm.get('type')?.hasError('required')">Vessel type is required</mat-error>
+              <input matInput formControlName="name" placeholder="e.g. Sea Explorer" maxlength="40" />
+              <mat-hint align="end">{{ boatForm.get('name')?.value?.length || 0 }}/40</mat-hint>
+              @if (boatForm.get('name')?.hasError('required'))  { <mat-error>Name is required</mat-error> }
+              @if (boatForm.get('name')?.hasError('minlength')) { <mat-error>Name must be at least 1 character</mat-error> }
+              @if (boatForm.get('name')?.hasError('maxlength')) { <mat-error>Name must not exceed 40 characters</mat-error> }
             </mat-form-field>
-          </div>
 
-          <div class="form-actions">
-            <a mat-stroked-button [routerLink]="isEditMode ? ['/boats', boatId] : ['/boats']">
-              <mat-icon>close</mat-icon>
-              Cancel
-            </a>
-            <button
-              mat-raised-button
-              color="primary"
-              type="submit"
-              [disabled]="boatForm.invalid || saving">
-              <mat-icon>{{ saving ? 'hourglass_empty' : (isEditMode ? 'save' : 'add') }}</mat-icon>
-              {{ saving ? 'Saving...' : (isEditMode ? 'Update Boat' : 'Add Boat') }}
-            </button>
-          </div>
-        </form>
-      </mat-card>
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Description</mat-label>
+              <mat-icon matPrefix>description</mat-icon>
+              <textarea
+                matInput
+                formControlName="description"
+                placeholder="Describe this boat..."
+                rows="4"
+                maxlength="2000">
+              </textarea>
+              <mat-hint align="end">{{ boatForm.get('description')?.value?.length || 0 }}/2000</mat-hint>
+              @if (boatForm.get('description')?.hasError('maxlength')) { <mat-error>Description must not exceed 2000 characters</mat-error> }
+            </mat-form-field>
+
+            <div class="two-col">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Status *</mat-label>
+                <mat-icon matPrefix>radio_button_checked</mat-icon>
+                <mat-select formControlName="status">
+                  <mat-option value="UNDERWAY">Underway</mat-option>
+                  <mat-option value="IN_PORT">In Port</mat-option>
+                  <mat-option value="MAINTENANCE">Maintenance</mat-option>
+                </mat-select>
+                @if (boatForm.get('status')?.hasError('required')) { <mat-error>Status is required</mat-error> }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Vessel Type *</mat-label>
+                <mat-icon matPrefix>directions_boat</mat-icon>
+                <mat-select formControlName="type">
+                  <mat-option value="SAILBOAT">Sailboat</mat-option>
+                  <mat-option value="TRAWLER">Trawler</mat-option>
+                  <mat-option value="CARGO_SHIP">Cargo Ship</mat-option>
+                  <mat-option value="YACHT">Yacht</mat-option>
+                  <mat-option value="FERRY">Ferry</mat-option>
+                </mat-select>
+                @if (boatForm.get('type')?.hasError('required')) { <mat-error>Vessel type is required</mat-error> }
+              </mat-form-field>
+            </div>
+
+            <div class="form-actions">
+              <a mat-stroked-button [routerLink]="isEditMode ? ['/boats', boatId] : ['/boats']">
+                <mat-icon>close</mat-icon>
+                Cancel
+              </a>
+              <button
+                mat-raised-button
+                color="primary"
+                type="submit"
+                [disabled]="boatForm.invalid || saving">
+                <mat-icon>{{ saving ? 'hourglass_empty' : (isEditMode ? 'save' : 'add') }}</mat-icon>
+                {{ saving ? 'Saving...' : (isEditMode ? 'Update Boat' : 'Add Boat') }}
+              </button>
+            </div>
+          </form>
+        </mat-card>
+      }
     </div>
   `,
   styles: [`
@@ -182,56 +185,54 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
     }
   `]
 })
-export class BoatFormComponent implements OnInit {
+export class BoatFormComponent implements OnInit, OnDestroy {
   boatForm!: FormGroup;
   isEditMode = false;
   boatId: number | null = null;
   loadingData = false;
   saving = false;
 
+  private destroy$ = new Subject<void>();
+
   constructor(
     private fb: FormBuilder,
     private route: ActivatedRoute,
     private router: Router,
     private boatService: BoatService,
+    private authService: AuthService,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.boatForm = this.fb.group({
-      name: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(40)]],
+      name:        ['', [Validators.required, Validators.minLength(1), Validators.maxLength(40)]],
       description: ['', [Validators.maxLength(2000)]],
-      status: ['IN_PORT', [Validators.required]],
-      type: ['YACHT', [Validators.required]]
+      status:      ['IN_PORT', [Validators.required]],
+      type:        ['YACHT',   [Validators.required]]
     });
 
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       this.isEditMode = true;
-      this.boatId = Number(id);
+      this.boatId     = Number(id);
       this.loadBoat(this.boatId);
     }
 
-    window.addEventListener('auth:token_received', this.tokenListener);
-  }
-
-  private tokenListener = () => {
-    if (this.isEditMode && this.boatId) {
-      this.loadBoat(this.boatId);
-    }
-  }
-
-  ngOnDestroy(): void {
-    window.removeEventListener('auth:token_received', this.tokenListener);
+    // Reload form data if a token refresh happens while the form is open
+    this.authService.onTokenReceived$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      if (this.isEditMode && this.boatId) this.loadBoat(this.boatId);
+    });
   }
 
   private loadBoat(id: number): void {
     this.loadingData = true;
-    this.cdr.detectChanges();
-    this.boatService.getBoatById(id).subscribe({
+    this.boatService.getBoatById(id).pipe(takeUntil(this.destroy$)).subscribe({
       next: (boat) => {
-        this.boatForm.patchValue({ name: boat.name, description: boat.description, status: boat.status, type: boat.type });
+        this.boatForm.patchValue({
+          name: boat.name, description: boat.description,
+          status: boat.status, type: boat.type
+        });
         this.loadingData = false;
         this.cdr.detectChanges();
       },
@@ -246,29 +247,33 @@ export class BoatFormComponent implements OnInit {
     if (this.boatForm.invalid) return;
 
     this.saving = true;
-    this.cdr.detectChanges();
     const request = this.boatForm.value;
 
     const operation = this.isEditMode
       ? this.boatService.updateBoat(this.boatId!, request)
       : this.boatService.createBoat(request);
 
-    operation.subscribe({
+    operation.pipe(takeUntil(this.destroy$)).subscribe({
       next: (boat) => {
-        const msg = this.isEditMode ? 'Boat updated successfully' : 'Boat added successfully';
-        this.snackBar.open(msg, 'Close', { duration: 3000, panelClass: 'success-snackbar' });
-        this.router.navigate(['/boats', boat.id]).then(navigated => {
-          if (!navigated) this.saving = false;
-        });
-        this.saving = false;
-        this.cdr.detectChanges();
+        this.snackBar.open(
+          this.isEditMode ? 'Boat updated successfully' : 'Boat added successfully',
+          'Close', { duration: 3000, panelClass: 'success-snackbar' }
+        );
+        this.router.navigate(['/boats', boat.id]);
       },
       error: (err) => {
-        const msg = err?.error?.detail || 'Failed to save boat';
-        this.snackBar.open(msg, 'Close', { duration: 4000, panelClass: 'error-snackbar' });
+        this.snackBar.open(
+          err?.error?.detail || 'Failed to save boat',
+          'Close', { duration: 4000, panelClass: 'error-snackbar' }
+        );
         this.saving = false;
         this.cdr.detectChanges();
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

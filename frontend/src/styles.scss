@@ -80,3 +80,12 @@ html, body {
 .error-snackbar {
   --mdc-snackbar-container-color: #DC2626;
 }
+
+// Paginator responsive overrides (replaces ::ng-deep in BoatListComponent)
+@media (max-width: 767px) {
+  .pagination-bar {
+    .mat-mdc-paginator-page-size { display: none; }
+    .mat-mdc-paginator-range-label { font-size: 0.75rem; margin: 0 4px; }
+    .mat-mdc-icon-button { width: 32px; height: 32px; padding: 4px; }
+  }
+}

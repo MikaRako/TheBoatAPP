@@ -3,10 +3,12 @@ import { inject } from '@angular/core';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { catchError, throwError } from 'rxjs';
 import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const oauthService = inject(OAuthService);
-  const router = inject(Router);
+  const authService  = inject(AuthService);
+  const router       = inject(Router);
 
   const token = oauthService.getAccessToken();
 
@@ -20,7 +22,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
-      if (error.status === 403) {
+      if (error.status === 401) {
+        authService.login(); // token expired — redirect to Keycloak
+      } else if (error.status === 403) {
         router.navigate(['/boats']);
       }
       return throwError(() => error);

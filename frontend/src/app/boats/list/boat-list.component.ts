@@ -1,5 +1,5 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
+import { NgClass, DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -10,18 +10,32 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap, startWith, combineLatest, BehaviorSubject, EMPTY, catchError } from 'rxjs';
+import { Subject, BehaviorSubject, EMPTY, switchMap, takeUntil, debounceTime, distinctUntilChanged, catchError } from 'rxjs';
 import { BoatService, Boat, BoatPage, BoatStatus, BoatType } from '../../shared/services/boat.service';
+import { AuthService } from '../../shared/services/auth.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
+import { StatusLabelPipe } from '../../shared/pipes/status-label.pipe';
+import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
 
 type StatusFilter = 'all' | BoatStatus;
-type TypeFilter = 'all' | BoatType;
+type TypeFilter   = 'all' | BoatType;
+
+interface ListState {
+  search:  string;
+  status:  StatusFilter;
+  type:    TypeFilter;
+  page:    number;
+  size:    number;
+  sortBy:  string;
+  sortDir: string;
+}
 
 @Component({
   selector: 'app-boat-list',
   standalone: true,
   imports: [
-    CommonModule,
+    NgClass,
+    DatePipe,
     RouterLink,
     ReactiveFormsModule,
     MatPaginatorModule,
@@ -31,7 +45,9 @@ type TypeFilter = 'all' | BoatType;
     MatDialogModule,
     MatSnackBarModule,
     MatSortModule,
-    MatProgressBarModule
+    MatProgressBarModule,
+    StatusLabelPipe,
+    StatusClassPipe
   ],
   template: `
     <div class="fleet-page">
@@ -48,9 +64,11 @@ type TypeFilter = 'all' | BoatType;
               class="search-input"
               [formControl]="searchControl"
               placeholder="Search by name or description..." />
-            <button class="search-clear" *ngIf="searchControl.value" (click)="searchControl.setValue('')">
-              <mat-icon>close</mat-icon>
-            </button>
+            @if (searchControl.value) {
+              <button class="search-clear" (click)="searchControl.setValue('')">
+                <mat-icon>close</mat-icon>
+              </button>
+            }
           </div>
           <a class="btn-add" routerLink="/boats/new">
             <mat-icon>add</mat-icon>
@@ -71,13 +89,13 @@ type TypeFilter = 'all' | BoatType;
 
         <div class="filter-group">
           <div class="vessel-type-select">
-            <select class="type-select" (change)="setTypeFilter($any($event.target).value)">
-              <option value="all">All Vessel Types</option>
-              <option value="SAILBOAT">Sailboat</option>
-              <option value="TRAWLER">Trawler</option>
-              <option value="CARGO_SHIP">Cargo Ship</option>
-              <option value="YACHT">Yacht</option>
-              <option value="FERRY">Ferry</option>
+            <select class="type-select" (change)="onTypeChange($event)">
+              <option value="all"       [selected]="typeFilter === 'all'">All Vessel Types</option>
+              <option value="SAILBOAT"  [selected]="typeFilter === 'SAILBOAT'">Sailboat</option>
+              <option value="TRAWLER"   [selected]="typeFilter === 'TRAWLER'">Trawler</option>
+              <option value="CARGO_SHIP"[selected]="typeFilter === 'CARGO_SHIP'">Cargo Ship</option>
+              <option value="YACHT"     [selected]="typeFilter === 'YACHT'">Yacht</option>
+              <option value="FERRY"     [selected]="typeFilter === 'FERRY'">Ferry</option>
             </select>
             <mat-icon class="select-arrow">expand_more</mat-icon>
           </div>
@@ -92,58 +110,101 @@ type TypeFilter = 'all' | BoatType;
       </div>
 
       <!-- Loading bar -->
-      <mat-progress-bar *ngIf="loading" mode="indeterminate" class="top-loader" />
+      @if (loading) {
+        <mat-progress-bar mode="indeterminate" class="top-loader" />
+      }
 
       <!-- Error state -->
-      <div *ngIf="error && !loading" class="state-card">
-        <mat-icon class="state-icon error-icon">error_outline</mat-icon>
-        <h3>Failed to load vessels</h3>
-        <p>{{ error }}</p>
-        <button class="btn-retry" (click)="refresh()">Try Again</button>
-      </div>
+      @if (error && !loading) {
+        <div class="state-card">
+          <mat-icon class="state-icon error-icon">error_outline</mat-icon>
+          <h3>Failed to load vessels</h3>
+          <p>{{ error }}</p>
+          <button class="btn-retry" (click)="refresh()">Try Again</button>
+        </div>
+      }
 
       <!-- Empty state -->
-      <div *ngIf="!loading && !error && boats.length === 0" class="state-card">
-        <mat-icon class="state-icon">sailing</mat-icon>
-        <h3>No vessels found</h3>
-        <p *ngIf="searchControl.value">No results for "{{ searchControl.value }}"</p>
-        <p *ngIf="!searchControl.value">Your fleet is empty. Add your first vessel!</p>
-        <a class="btn-add-inline" routerLink="/boats/new">Add First Vessel</a>
-      </div>
+      @if (!loading && !error && boats.length === 0) {
+        <div class="state-card">
+          <mat-icon class="state-icon">sailing</mat-icon>
+          <h3>No vessels found</h3>
+          @if (searchControl.value) {
+            <p>No results for "{{ searchControl.value }}"</p>
+          } @else {
+            <p>Your fleet is empty. Add your first vessel!</p>
+          }
+          <a class="btn-add-inline" routerLink="/boats/new">Add First Vessel</a>
+        </div>
+      }
 
       <!-- Card grid -->
-      <div class="vessel-grid" *ngIf="!error && boats.length > 0"
-           [style.gridTemplateColumns]="gridCols"
-           [class.vessel-grid--list]="isListView">
-        <div class="vessel-card" *ngFor="let boat of boats"
-             [routerLink]="['/boats', boat.id]"
-             [class.vessel-card--list]="isListView"
-             style="cursor:pointer">
+      @if (!error && boats.length > 0) {
+        <div class="vessel-grid"
+             [style.gridTemplateColumns]="gridCols"
+             [class.vessel-grid--list]="isListView"
+             [class.vessel-grid--compact]="isCompactView">
+          @for (boat of boats; track boat.id) {
+            <div class="vessel-card"
+                 [routerLink]="['/boats', boat.id]"
+                 [class.vessel-card--list]="isListView"
+                 style="cursor:pointer">
 
-          <!-- ── Card view (4 / 8 items per page) ── -->
-          <ng-container *ngIf="!isListView">
-            <div class="card-image">
-              <div class="image-placeholder" [ngClass]="'img-' + (boat.id % 4)">
-                <mat-icon>directions_boat</mat-icon>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="card-title-row">
-                <h3 class="vessel-name">{{ boat.name }}</h3>
-                <span class="status-badge" [ngClass]="getStatusClass(boat)">
-                  {{ getStatusLabel(boat) }}
-                </span>
-              </div>
-              <p class="vessel-desc">{{ boat.description || 'No description provided.' }}</p>
-              <div class="card-divider"></div>
-              <div class="meta-grid">
-                <div class="meta-col">
-                  <span class="meta-label">CREATED</span>
-                  <span class="meta-value">{{ boat.createdAt | date:'MMM d, y' }}</span>
+              <!-- ── Card view (4 / 8 items per page) ── -->
+              @if (!isListView) {
+                <div class="card-image">
+                  <div class="image-placeholder" [ngClass]="'img-' + (boat.id % 4)">
+                    <mat-icon>directions_boat</mat-icon>
+                  </div>
                 </div>
-              </div>
-              <div class="card-actions">
-                <div class="card-btn-group" (click)="$event.stopPropagation()">
+                <div class="card-body">
+                  <div class="card-title-row">
+                    <h3 class="vessel-name">{{ boat.name }}</h3>
+                    <span class="status-badge" [ngClass]="boat.status | statusClass">
+                      {{ boat.status | statusLabel }}
+                    </span>
+                  </div>
+                  <p class="vessel-desc">{{ boat.description || 'No description provided.' }}</p>
+                  <div class="card-divider"></div>
+                  <div class="meta-grid">
+                    <div class="meta-col">
+                      <span class="meta-label">CREATED</span>
+                      <span class="meta-value">{{ boat.createdAt | date:'MMM d, y' }}</span>
+                    </div>
+                  </div>
+                  <div class="card-actions">
+                    <div class="card-btn-group" (click)="$event.stopPropagation()">
+                      <a class="card-icon-btn card-icon-btn-view" [routerLink]="['/boats', boat.id]" matTooltip="View vessel">
+                        <mat-icon>visibility</mat-icon>
+                      </a>
+                      <a class="card-icon-btn" [routerLink]="['/boats', boat.id, 'edit']" matTooltip="Edit vessel">
+                        <mat-icon>edit</mat-icon>
+                      </a>
+                      <button class="card-icon-btn card-icon-btn-danger" (click)="confirmDelete(boat)" matTooltip="Delete vessel">
+                        <mat-icon>delete_outline</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              <!-- ── List view (16 / 32 items per page) ── -->
+              @if (isListView) {
+                <div class="list-strip" [ngClass]="'img-' + (boat.id % 4)">
+                  <mat-icon>directions_boat</mat-icon>
+                </div>
+                <div class="list-info">
+                  <h3 class="vessel-name">{{ boat.name }}</h3>
+                  <p class="vessel-desc">{{ boat.description || 'No description provided.' }}</p>
+                </div>
+                <span class="status-badge list-status" [ngClass]="boat.status | statusClass">
+                  {{ boat.status | statusLabel }}
+                </span>
+                <span class="list-date">
+                  <mat-icon>calendar_today</mat-icon>
+                  {{ boat.createdAt | date:'MMM d, y' }}
+                </span>
+                <div class="list-actions" (click)="$event.stopPropagation()">
                   <a class="card-icon-btn card-icon-btn-view" [routerLink]="['/boats', boat.id]" matTooltip="View vessel">
                     <mat-icon>visibility</mat-icon>
                   </a>
@@ -154,53 +215,26 @@ type TypeFilter = 'all' | BoatType;
                     <mat-icon>delete_outline</mat-icon>
                   </button>
                 </div>
-              </div>
-            </div>
-          </ng-container>
+              }
 
-          <!-- ── List view (16 / 32 items per page) ── -->
-          <ng-container *ngIf="isListView">
-            <div class="list-strip" [ngClass]="'img-' + (boat.id % 4)">
-              <mat-icon>directions_boat</mat-icon>
             </div>
-            <div class="list-info">
-              <h3 class="vessel-name">{{ boat.name }}</h3>
-              <p class="vessel-desc">{{ boat.description || 'No description provided.' }}</p>
-            </div>
-            <span class="status-badge list-status" [ngClass]="getStatusClass(boat)">
-              {{ getStatusLabel(boat) }}
-            </span>
-            <span class="list-date">
-              <mat-icon>calendar_today</mat-icon>
-              {{ boat.createdAt | date:'MMM d, y' }}
-            </span>
-            <div class="list-actions" (click)="$event.stopPropagation()">
-              <a class="card-icon-btn card-icon-btn-view" [routerLink]="['/boats', boat.id]" matTooltip="View vessel">
-                <mat-icon>visibility</mat-icon>
-              </a>
-              <a class="card-icon-btn" [routerLink]="['/boats', boat.id, 'edit']" matTooltip="Edit vessel">
-                <mat-icon>edit</mat-icon>
-              </a>
-              <button class="card-icon-btn card-icon-btn-danger" (click)="confirmDelete(boat)" matTooltip="Delete vessel">
-                <mat-icon>delete_outline</mat-icon>
-              </button>
-            </div>
-          </ng-container>
-
+          }
         </div>
-      </div>
+      }
 
       <!-- Pagination -->
-      <div class="pagination-bar" *ngIf="!error && totalElements > 0">
-        <mat-paginator
-          [length]="totalElements"
-          [pageSize]="pageSize"
-          [pageSizeOptions]="[4, 8, 16, 32]"
-          [pageIndex]="currentPage"
-          (page)="onPageChange($event)"
-          showFirstLastButtons>
-        </mat-paginator>
-      </div>
+      @if (!error && totalElements > 0) {
+        <div class="pagination-bar">
+          <mat-paginator
+            [length]="totalElements"
+            [pageSize]="pageSize"
+            [pageSizeOptions]="[4, 8, 16, 32]"
+            [pageIndex]="currentPage"
+            (page)="onPageChange($event)"
+            showFirstLastButtons>
+          </mat-paginator>
+        </div>
+      }
 
     </div>
   `,
@@ -277,23 +311,6 @@ type TypeFilter = 'all' | BoatType;
       padding: 0;
     }
     .search-clear mat-icon { font-size: 16px; width: 16px; height: 16px; }
-
-    /* Notification btn */
-    .btn-notification {
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
-      border: 1.5px solid var(--color-border);
-      background: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      color: var(--color-text-secondary);
-      transition: border-color 0.15s;
-    }
-    .btn-notification:hover { border-color: var(--color-primary); }
-    .btn-notification mat-icon { font-size: 20px; width: 20px; height: 20px; }
 
     /* Add button */
     .btn-add {
@@ -653,6 +670,52 @@ type TypeFilter = 'all' | BoatType;
     }
     .card-icon-btn-view:hover { background: #1a3a6b; transform: translateY(-1px); }
 
+    /* ── Compact view (4 × 2 grid, page size 8) ── */
+    .vessel-grid--compact {
+      gap: 14px;
+    }
+
+    .vessel-grid--compact .card-image {
+      height: 120px;
+    }
+    .vessel-grid--compact .image-placeholder mat-icon {
+      font-size: 44px;
+      width: 44px;
+      height: 44px;
+    }
+    .vessel-grid--compact .card-body {
+      padding: 12px 14px 14px;
+    }
+    .vessel-grid--compact .vessel-name {
+      font-size: 0.88rem;
+    }
+    .vessel-grid--compact .vessel-desc {
+      font-size: 0.74rem;
+      margin-bottom: 10px;
+    }
+    .vessel-grid--compact .meta-label {
+      font-size: 0.58rem;
+    }
+    .vessel-grid--compact .meta-value {
+      font-size: 0.76rem;
+    }
+    .vessel-grid--compact .meta-grid {
+      margin-bottom: 10px;
+    }
+    .vessel-grid--compact .card-icon-btn {
+      width: 28px;
+      height: 28px;
+    }
+    .vessel-grid--compact .card-icon-btn mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+    .vessel-grid--compact .status-badge {
+      font-size: 0.58rem;
+      padding: 2px 7px;
+    }
+
     /* ── List view ── */
     .vessel-grid--list {
       gap: 6px;
@@ -808,13 +871,6 @@ type TypeFilter = 'all' | BoatType;
         padding: 10px 10px 12px;
         gap: 6px;
       }
-      .card-btn {
-        height: 28px;
-        font-size: 0.62rem;
-        gap: 3px;
-        letter-spacing: 0.4px;
-      }
-      .card-btn mat-icon { font-size: 12px; width: 12px; height: 12px; }
       .card-icon-btn {
         width: 28px;
         height: 28px;
@@ -825,18 +881,6 @@ type TypeFilter = 'all' | BoatType;
       .pagination-bar {
         padding: 0 4px;
       }
-      ::ng-deep .pagination-bar .mat-mdc-paginator-page-size {
-        display: none;
-      }
-      ::ng-deep .pagination-bar .mat-mdc-paginator-range-label {
-        font-size: 0.75rem;
-        margin: 0 4px;
-      }
-      ::ng-deep .pagination-bar .mat-mdc-icon-button {
-        width: 32px;
-        height: 32px;
-        padding: 4px;
-      }
     }
   `]
 })
@@ -845,21 +889,16 @@ export class BoatListComponent implements OnInit, OnDestroy {
   loading = true;
   error = '';
   totalElements = 0;
-  currentPage = 0;
-  pageSize = Number(localStorage.getItem('fleet_pageSize') ?? '8');
-  sortBy = 'createdAt';
-  sortDir = 'desc';
-  statusFilter: StatusFilter = 'all';
-  typeFilter: TypeFilter = 'all';
   maxCols = 2;
 
   searchControl = new FormControl('');
+
   private destroy$ = new Subject<void>();
-  private refresh$ = new BehaviorSubject<void>(undefined);
-  private authListener = () => this.loadPage();
+  private state$!: BehaviorSubject<ListState>;
 
   constructor(
     private boatService: BoatService,
+    private authService: AuthService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef
@@ -872,161 +911,142 @@ export class BoatListComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.onResize();
-    combineLatest([
-      this.searchControl.valueChanges.pipe(
-        startWith(''),
-        debounceTime(300),
-        distinctUntilChanged()
-      ),
-      this.refresh$
-    ]).pipe(
-      takeUntil(this.destroy$),
-      switchMap(([search]) => {
-        this.loading = true;
-        this.error = '';
-        this.currentPage = 0;
-        try { this.cdr.detectChanges(); } catch {}
-        return this.boatService.getBoats(
-          search ?? '', this.currentPage, this.pageSize, this.sortBy, this.sortDir,
-          this.statusFilter === 'all' ? '' : this.statusFilter,
-          this.typeFilter === 'all' ? '' : this.typeFilter
-        ).pipe(
-          catchError(err => {
-            this.handleError(err);
-            return EMPTY;
-          })
-        );
-      })
-    ).subscribe({
-      next: (page) => this.handlePage(page)
+
+    this.state$ = new BehaviorSubject<ListState>({
+      search:  '',
+      status:  'all',
+      type:    'all',
+      page:    0,
+      size:    Number(localStorage.getItem('fleet_pageSize') ?? '8'),
+      sortBy:  'createdAt',
+      sortDir: 'desc'
     });
 
-    this.loadPage();
-    window.addEventListener('auth:token_received', this.authListener);
+    // Debounce search and reset page to 0 on new query
+    this.searchControl.valueChanges.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(search => {
+      this.state$.next({ ...this.state$.value, search: search ?? '', page: 0 });
+    });
+
+    // Single pipeline — reacts to every state change
+    this.state$.pipe(
+      takeUntil(this.destroy$),
+      switchMap(state => {
+        this.loading = true;
+        this.error   = '';
+        return this.boatService.getBoats(
+          state.search, state.page, state.size, state.sortBy, state.sortDir,
+          state.status === 'all' ? '' : state.status,
+          state.type   === 'all' ? '' : state.type
+        ).pipe(catchError(err => { this.handleError(err); return EMPTY; }));
+      })
+    ).subscribe({ next: page => this.handlePage(page) });
+
+    // Refresh data on token renewal without duplicating the load logic
+    this.authService.onTokenReceived$.pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.refresh());
   }
 
-  refresh(): void {
-    this.refresh$.next();
-  }
+  // ── Getters for template ──────────────────────────────────────────────────
 
-  setStatusFilter(filter: StatusFilter): void {
-    this.statusFilter = filter;
-    this.currentPage = 0;
-    this.loadPage();
-  }
-
-  setTypeFilter(filter: TypeFilter): void {
-    this.typeFilter = filter;
-    this.currentPage = 0;
-    this.loadPage();
-  }
-
-  onPageChange(event: PageEvent): void {
-    this.currentPage = event.pageIndex;
-    this.pageSize = event.pageSize;
-    localStorage.setItem('fleet_pageSize', String(this.pageSize));
-    this.loadPage();
-  }
-
-  onSort(sort: Sort): void {
-    this.sortBy = sort.active || 'createdAt';
-    this.sortDir = sort.direction || 'desc';
-    this.loadPage();
-  }
-
-  getStatusLabel(boat: Boat): string {
-    switch (boat.status) {
-      case 'UNDERWAY': return 'UNDERWAY';
-      case 'MAINTENANCE': return 'MAINTENANCE';
-      case 'IN_PORT': return 'IN PORT';
-    }
-  }
-
-  getStatusClass(boat: Boat): string {
-    switch (boat.status) {
-      case 'UNDERWAY': return 'badge-active';
-      case 'MAINTENANCE': return 'badge-maintenance';
-      case 'IN_PORT': return 'badge-port';
-    }
-  }
+  get statusFilter(): StatusFilter { return this.state$.value.status; }
+  get typeFilter():   TypeFilter   { return this.state$.value.type; }
+  get currentPage():  number       { return this.state$.value.page; }
+  get pageSize():     number       { return this.state$.value.size; }
 
   get isListView(): boolean {
-    return this.pageSize >= 16;
+    return this.state$.value.size >= 16;
+  }
+
+  /** 4-column compact grid — only on desktop when page size is 8 */
+  get isCompactView(): boolean {
+    return this.state$.value.size === 8 && this.maxCols > 1;
   }
 
   get gridCols(): string {
     if (this.maxCols === 1 || this.isListView) return 'repeat(1, 1fr)';
-    return `repeat(${this.pageSize / 2}, 1fr)`;
+    if (this.isCompactView) return 'repeat(4, 1fr)';
+    return 'repeat(2, 1fr)'; // size = 4 → 2×2
   }
 
-  private loadPage(): void {
-    this.loading = true;
-    try { this.cdr.detectChanges(); } catch {}
-    this.boatService.getBoats(
-      this.searchControl.value ?? '',
-      this.currentPage,
-      this.pageSize,
-      this.sortBy,
-      this.sortDir,
-      this.statusFilter === 'all' ? '' : this.statusFilter,
-      this.typeFilter === 'all' ? '' : this.typeFilter
-    ).subscribe({
-      next: (page) => this.handlePage(page),
-      error: (err) => {
-        this.handleError(err);
-        this.loading = false;
-      }
+  // ── State mutators ────────────────────────────────────────────────────────
+
+  refresh(): void {
+    this.state$.next({ ...this.state$.value }); // new object reference re-triggers switchMap
+  }
+
+  setStatusFilter(filter: StatusFilter): void {
+    this.state$.next({ ...this.state$.value, status: filter, page: 0 });
+  }
+
+  onTypeChange(event: Event): void {
+    const type = (event.target as HTMLSelectElement).value as TypeFilter;
+    this.state$.next({ ...this.state$.value, type, page: 0 });
+  }
+
+  onPageChange(event: PageEvent): void {
+    localStorage.setItem('fleet_pageSize', String(event.pageSize));
+    this.state$.next({ ...this.state$.value, page: event.pageIndex, size: event.pageSize });
+  }
+
+  onSort(sort: Sort): void {
+    this.state$.next({
+      ...this.state$.value,
+      sortBy:  sort.active    || 'createdAt',
+      sortDir: sort.direction || 'desc',
+      page: 0
     });
-  }
-
-  private handlePage(page: BoatPage): void {
-    this.boats = page.content;
-    this.totalElements = page.totalElements;
-    this.loading = false;
-    try { this.cdr.detectChanges(); } catch {}
-  }
-
-  private handleError(err: any): void {
-    this.error = err?.error?.detail || 'An error occurred while loading vessels.';
-    this.loading = false;
-    try { this.cdr.detectChanges(); } catch {}
   }
 
   confirmDelete(boat: Boat): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       data: {
-        title: 'Delete Vessel',
-        message: `Are you sure you want to delete "${boat.name}"? This action cannot be undone.`,
+        title:       'Delete Vessel',
+        message:     `Are you sure you want to delete "${boat.name}"? This action cannot be undone.`,
         confirmText: 'Delete',
-        cancelText: 'Cancel',
-        dangerous: true
+        cancelText:  'Cancel',
+        dangerous:   true
       }
     });
 
-    dialogRef.afterClosed().subscribe(confirmed => {
-      if (confirmed) {
-        this.boatService.deleteBoat(boat.id).subscribe({
-          next: () => {
-            this.snackBar.open(`"${boat.name}" deleted successfully`, 'Close', {
-              duration: 3000,
-              panelClass: 'success-snackbar'
-            });
-            this.refresh();
-          },
-          error: () => {
-            this.snackBar.open('Failed to delete vessel', 'Close', {
-              duration: 3000,
-              panelClass: 'error-snackbar'
-            });
-          }
-        });
-      }
+    dialogRef.afterClosed().pipe(takeUntil(this.destroy$)).subscribe(confirmed => {
+      if (!confirmed) return;
+      this.boatService.deleteBoat(boat.id).pipe(takeUntil(this.destroy$)).subscribe({
+        next: () => {
+          this.snackBar.open(`"${boat.name}" deleted successfully`, 'Close', {
+            duration: 3000, panelClass: 'success-snackbar'
+          });
+          this.refresh();
+        },
+        error: () => {
+          this.snackBar.open('Failed to delete vessel', 'Close', {
+            duration: 3000, panelClass: 'error-snackbar'
+          });
+        }
+      });
     });
+  }
+
+  // ── Private helpers ───────────────────────────────────────────────────────
+
+  private handlePage(page: BoatPage): void {
+    this.boats         = page.content;
+    this.totalElements = page.totalElements;
+    this.loading       = false;
+    this.cdr.detectChanges();
+  }
+
+  private handleError(err: any): void {
+    this.error   = err?.error?.detail || 'An error occurred while loading vessels.';
+    this.loading = false;
+    this.cdr.detectChanges();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    window.removeEventListener('auth:token_received', this.authListener);
   }
 }
