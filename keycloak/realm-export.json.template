@@ -2,6 +2,7 @@
   "id": "boat-realm",
   "realm": "boat-realm",
   "displayName": "Boat Management",
+  "loginTheme": "boat-theme",
   "enabled": true,
   "sslRequired": "none",
   "registrationAllowed": true,

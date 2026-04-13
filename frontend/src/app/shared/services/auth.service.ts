@@ -59,24 +59,12 @@ export class AuthService {
         this._userName.set(claims?.['preferred_username'] || claims?.['name'] || 'User');
         this.router.navigate(['/boats']);
         try { window.dispatchEvent(new Event('auth:token_received')); } catch {}
-      } else {
-        // If the URL already contains an authorization `code` (Keycloak redirected here)
-        // avoid immediately calling `initCodeFlow()` which would redirect again and
-        // create a loop. Only start a new login if there's no `code` or `error` in URL.
-        const params = new URLSearchParams(window.location.search);
-        if (!params.has('code') && !params.has('error')) {
-          this.login();
-        } else {
-          console.warn('AuthService: authorization code present but token not obtained; skipping login to avoid redirect loop.');
-        }
       }
+      // Do not auto-redirect to Keycloak — let the auth guard send
+      // unauthenticated users to the custom /login page instead.
     } catch (err) {
       console.error('Auth init error:', err);
-      // Only trigger login if there's no auth code in the URL to avoid loop
-      const params = new URLSearchParams(window.location.search);
-      if (!params.has('code') && !params.has('error')) {
-        this.login();
-      }
+      // Do not auto-redirect on error — user will reach /login via the guard.
     }
 
     // Setup silent refresh after initial discovery/config
@@ -103,6 +91,21 @@ export class AuthService {
 
   login(): void {
     this.oauthService.initCodeFlow();
+  }
+
+  register(): void {
+    const cfg = this.oauthService as any;
+    const issuer: string = cfg.issuer ?? '';
+    const clientId: string = cfg.clientId ?? '';
+    const redirectUri: string = cfg.redirectUri ?? window.location.origin;
+    const scope: string = cfg.scope ?? 'openid';
+    const url =
+      `${issuer}/protocol/openid-connect/registrations` +
+      `?client_id=${encodeURIComponent(clientId)}` +
+      `&response_type=code` +
+      `&scope=${encodeURIComponent(scope)}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    window.location.href = url;
   }
 
   logout(): void {

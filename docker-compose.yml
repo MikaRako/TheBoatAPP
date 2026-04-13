@@ -42,17 +42,7 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >-
-        mkdir -p /opt/keycloak/data/import &&
-        sed
-        -e 's|__KC_BOATUSER_PASSWORD__|${KC_BOATUSER_PASSWORD}|g'
-        -e 's|__KC_BOATADMIN_PASSWORD__|${KC_BOATADMIN_PASSWORD}|g'
-        /tmp/realm-export.json.template
-        > /opt/keycloak/data/import/realm-export.json &&
-        /opt/keycloak/bin/kc.sh start-dev --import-realm
+    entrypoint: ["/bin/sh", "/opt/keycloak/startup.sh"]
     environment:
       TZ: ${TZ:-Europe/Zurich}
       KC_DB: postgres
@@ -71,6 +61,8 @@ services:
       KC_BOATADMIN_PASSWORD: ${KC_BOATADMIN_PASSWORD}
     volumes:
       - ./keycloak/realm-export.json.template:/tmp/realm-export.json.template:ro
+      - ./keycloak/themes:/opt/keycloak/themes:ro
+      - ./keycloak/startup.sh:/opt/keycloak/startup.sh:ro
     ports:
       - "8080:8080"
     depends_on:

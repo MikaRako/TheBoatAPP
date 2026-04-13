@@ -1,7 +1,6 @@
 import { Component, Inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 export interface ConfirmDialogData {
@@ -15,51 +14,132 @@ export interface ConfirmDialogData {
 @Component({
   selector: 'app-confirm-dialog',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule],
+  imports: [CommonModule, MatDialogModule, MatIconModule],
   template: `
     <div class="dialog-container">
       <div class="dialog-icon" [class.danger]="data.dangerous">
         <mat-icon>{{ data.dangerous ? 'warning' : 'help_outline' }}</mat-icon>
       </div>
-      <h2 mat-dialog-title>{{ data.title }}</h2>
-      <mat-dialog-content>
-        <p>{{ data.message }}</p>
-      </mat-dialog-content>
-      <mat-dialog-actions align="end">
-        <button mat-stroked-button [mat-dialog-close]="false">
-          {{ data.cancelText || 'Cancel' }}
-        </button>
-        <button
-          mat-raised-button
-          [color]="data.dangerous ? 'warn' : 'primary'"
-          [mat-dialog-close]="true"
-          cdkFocusInitial>
+
+      <h2 class="dialog-title">{{ data.title }}</h2>
+      <p class="dialog-message">{{ data.message }}</p>
+
+      <div class="dialog-actions">
+        <button class="btn-confirm" [class.btn-danger]="data.dangerous" (click)="dialogRef.close(true)">
           {{ data.confirmText || 'Confirm' }}
         </button>
-      </mat-dialog-actions>
+        <button class="btn-cancel" (click)="dialogRef.close(false)">
+          {{ data.cancelText || 'Cancel' }}
+        </button>
+      </div>
     </div>
   `,
   styles: [`
+    ::ng-deep .mat-mdc-dialog-surface {
+      background: #192744 !important;
+      border-radius: 16px !important;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.55) !important;
+      border: 1px solid rgba(99,140,200,0.14) !important;
+    }
+
     .dialog-container {
-      padding: 8px 8px 0;
-      min-width: 320px;
-      max-width: 480px;
-    }
-    .dialog-icon {
+      padding: 36px 28px 28px;
+      min-width: 340px;
+      max-width: 460px;
       display: flex;
-      justify-content: center;
-      margin-bottom: 8px;
-      mat-icon {
-        font-size: 48px;
-        width: 48px;
-        height: 48px;
-        color: var(--color-primary);
-      }
-      &.danger mat-icon { color: var(--color-warn); }
+      flex-direction: column;
+      align-items: center;
     }
-    h2 { text-align: center; font-family: var(--font-main); }
-    p { color: var(--color-text-secondary); text-align: center; margin-top: 8px; }
-    mat-dialog-actions { gap: 8px; padding: 16px 0; }
+
+    /* Icon */
+    .dialog-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 14px;
+      background: rgba(42,82,152,0.18);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .dialog-icon mat-icon {
+      font-size: 30px;
+      width: 30px;
+      height: 30px;
+      color: #93c5fd;
+    }
+    .dialog-icon.danger {
+      background: rgba(232,110,90,0.15);
+    }
+    .dialog-icon.danger mat-icon {
+      color: #e8836a;
+    }
+
+    /* Text */
+    .dialog-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #e2e8f4;
+      text-align: center;
+      margin-bottom: 10px;
+      font-family: var(--font-main);
+    }
+    .dialog-message {
+      font-size: 0.875rem;
+      color: #7090b0;
+      text-align: center;
+      line-height: 1.65;
+      margin-bottom: 28px;
+    }
+
+    /* Buttons */
+    .dialog-actions {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .btn-confirm {
+      width: 100%;
+      height: 46px;
+      border: none;
+      border-radius: 8px;
+      font-family: var(--font-main);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      cursor: pointer;
+      background: linear-gradient(135deg, #1a3a6b 0%, #2a5298 100%);
+      color: white;
+      box-shadow: 0 4px 16px rgba(42,82,152,0.3);
+      transition: opacity 0.15s, box-shadow 0.15s;
+    }
+    .btn-confirm.btn-danger {
+      background: linear-gradient(135deg, #b94030 0%, #e8836a 100%);
+      box-shadow: 0 4px 16px rgba(232,110,90,0.3);
+    }
+    .btn-confirm:hover {
+      opacity: 0.88;
+    }
+
+    .btn-cancel {
+      width: 100%;
+      height: 42px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      font-family: var(--font-main);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #7090b0;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .btn-cancel:hover {
+      color: #e2e8f4;
+    }
   `]
 })
 export class ConfirmDialogComponent {

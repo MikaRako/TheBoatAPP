@@ -92,6 +92,11 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
     </div>
   `,
   styles: [`
+    .page-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 28px 24px;
+    }
     .breadcrumb {
       display: flex;
       align-items: center;
