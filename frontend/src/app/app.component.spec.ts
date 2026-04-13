@@ -30,21 +30,21 @@ describe('AppComponent', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
-  it('should hide the toolbar when not authenticated', () => {
+  it('should hide the nav bar when not authenticated', () => {
     authServiceSpy.isAuthenticated.and.returnValue(false);
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
-    const toolbar = fixture.nativeElement.querySelector('mat-toolbar');
-    expect(toolbar).toBeNull();
+    const nav = fixture.nativeElement.querySelector('nav.top-nav');
+    expect(nav).toBeNull();
   });
 
-  it('should show the toolbar when authenticated', () => {
+  it('should show the nav bar when authenticated', () => {
     authServiceSpy.isAuthenticated.and.returnValue(true);
     authServiceSpy.userName.and.returnValue('testuser');
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
-    const toolbar = fixture.nativeElement.querySelector('mat-toolbar');
-    expect(toolbar).not.toBeNull();
+    const nav = fixture.nativeElement.querySelector('nav.top-nav');
+    expect(nav).not.toBeNull();
   });
 
   it('should display the username in the toolbar', () => {

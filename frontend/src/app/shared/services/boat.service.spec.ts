@@ -25,7 +25,7 @@ describe('BoatService', () => {
 
   it('should fetch a paginated list of boats with default params', () => {
     const mockPage: BoatPage = {
-      content: [{ id: 1, name: 'Sea Breeze', description: 'Sailing boat', createdAt: '2024-01-01' }],
+      content: [{ id: 1, name: 'Sea Breeze', description: 'Sailing boat', status: 'IN_PORT', type: 'SAILBOAT', createdAt: '2024-01-01' }],
       page: 0, size: 10, totalElements: 1, totalPages: 1, last: true,
     };
 
@@ -51,7 +51,7 @@ describe('BoatService', () => {
   });
 
   it('should fetch a boat by id', () => {
-    const mockBoat: Boat = { id: 1, name: 'Sea Breeze', description: 'Sailing boat', createdAt: '2024-01-01' };
+    const mockBoat: Boat = { id: 1, name: 'Sea Breeze', description: 'Sailing boat', status: 'IN_PORT', type: 'SAILBOAT', createdAt: '2024-01-01' };
 
     service.getBoatById(1).subscribe(boat => {
       expect(boat.id).toBe(1);
@@ -64,8 +64,8 @@ describe('BoatService', () => {
   });
 
   it('should send a POST request to create a boat', () => {
-    const request: BoatRequest = { name: 'New Wave', description: 'Motor boat' };
-    const mockBoat: Boat = { id: 2, name: 'New Wave', description: 'Motor boat', createdAt: '2024-01-02' };
+    const request: BoatRequest = { name: 'New Wave', description: 'Motor boat', status: 'UNDERWAY', type: 'YACHT' };
+    const mockBoat: Boat = { id: 2, name: 'New Wave', description: 'Motor boat', status: 'UNDERWAY', type: 'YACHT', createdAt: '2024-01-02' };
 
     service.createBoat(request).subscribe(boat => {
       expect(boat.id).toBe(2);
@@ -79,8 +79,8 @@ describe('BoatService', () => {
   });
 
   it('should send a PUT request to update a boat', () => {
-    const request: BoatRequest = { name: 'Renamed Boat' };
-    const mockBoat: Boat = { id: 1, name: 'Renamed Boat', description: '', createdAt: '2024-01-01' };
+    const request: BoatRequest = { name: 'Renamed Boat', status: 'MAINTENANCE', type: 'FERRY' };
+    const mockBoat: Boat = { id: 1, name: 'Renamed Boat', description: '', status: 'MAINTENANCE', type: 'FERRY', createdAt: '2024-01-01' };
 
     service.updateBoat(1, request).subscribe(boat => {
       expect(boat.name).toBe('Renamed Boat');

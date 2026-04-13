@@ -34,5 +34,9 @@
     "src/**/*.spec.ts",
     "out-tsc",
     "node_modules"
+  ],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.spec.json" }
   ]
 }
