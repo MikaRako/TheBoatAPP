@@ -5,6 +5,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
@@ -21,6 +22,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatButtonModule,
     MatIconModule,
     MatSnackBarModule,
@@ -72,6 +74,32 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
             <mat-hint align="end">{{ boatForm.get('description')?.value?.length || 0 }}/2000</mat-hint>
             <mat-error *ngIf="boatForm.get('description')?.hasError('maxlength')">Description must not exceed 2000 characters</mat-error>
           </mat-form-field>
+
+          <div class="two-col">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Status *</mat-label>
+              <mat-icon matPrefix>radio_button_checked</mat-icon>
+              <mat-select formControlName="status">
+                <mat-option value="UNDERWAY">Underway</mat-option>
+                <mat-option value="IN_PORT">In Port</mat-option>
+                <mat-option value="MAINTENANCE">Maintenance</mat-option>
+              </mat-select>
+              <mat-error *ngIf="boatForm.get('status')?.hasError('required')">Status is required</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Vessel Type *</mat-label>
+              <mat-icon matPrefix>directions_boat</mat-icon>
+              <mat-select formControlName="type">
+                <mat-option value="SAILBOAT">Sailboat</mat-option>
+                <mat-option value="TRAWLER">Trawler</mat-option>
+                <mat-option value="CARGO_SHIP">Cargo Ship</mat-option>
+                <mat-option value="YACHT">Yacht</mat-option>
+                <mat-option value="FERRY">Ferry</mat-option>
+              </mat-select>
+              <mat-error *ngIf="boatForm.get('type')?.hasError('required')">Vessel type is required</mat-error>
+            </mat-form-field>
+          </div>
 
           <div class="form-actions">
             <a mat-stroked-button [routerLink]="isEditMode ? ['/boats', boatId] : ['/boats']">
@@ -138,6 +166,14 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       gap: 8px;
     }
     .full-width { width: 100%; }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 600px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
     .form-actions {
       display: flex;
       gap: 12px;
@@ -165,7 +201,9 @@ export class BoatFormComponent implements OnInit {
   ngOnInit(): void {
     this.boatForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(1), Validators.maxLength(40)]],
-      description: ['', [Validators.maxLength(2000)]]
+      description: ['', [Validators.maxLength(2000)]],
+      status: ['IN_PORT', [Validators.required]],
+      type: ['YACHT', [Validators.required]]
     });
 
     const id = this.route.snapshot.paramMap.get('id');
@@ -193,7 +231,7 @@ export class BoatFormComponent implements OnInit {
     this.cdr.detectChanges();
     this.boatService.getBoatById(id).subscribe({
       next: (boat) => {
-        this.boatForm.patchValue({ name: boat.name, description: boat.description });
+        this.boatForm.patchValue({ name: boat.name, description: boat.description, status: boat.status, type: boat.type });
         this.loadingData = false;
         this.cdr.detectChanges();
       },

@@ -1,6 +1,8 @@
 package com.boatmanagement.repository;
 
 import com.boatmanagement.entity.Boat;
+import com.boatmanagement.entity.BoatStatus;
+import com.boatmanagement.entity.BoatType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -26,20 +28,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Testing strategy — Output Adapter (Persistence):
  *
  * These tests verify the persistence adapter in isolation using a real
- * PostgreSQL
- * database managed by TestContainers. This ensures our JPQL queries, Hibernate
- * mappings, and column constraints behave exactly as they would in production.
+ * PostgreSQL database managed by TestContainers. This ensures our JPQL queries,
+ * Hibernate mappings, and column constraints behave exactly as they would in
+ * production.
  *
  * @DataJpaTest loads only the JPA slice (entities, repositories), making tests
  *              significantly faster than a full @SpringBootTest while still
  *              using real SQL.
  * @AutoConfigureTestDatabase(replace=NONE) prevents Spring from swapping in H2.
  *
- *                                          Each @Nested class covers one group
- *                                          of repository operations.
- *                                          A @BeforeEach clears the table so
- *                                          tests are fully isolated from one
- *                                          another.
+ *              Each @Nested class covers one group of repository operations.
+ *              A @BeforeEach clears the table so tests are fully isolated.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
@@ -74,7 +73,13 @@ class BoatRepositoryTest {
     // ---------------------------------------------------------------------------
 
     private Boat saveBoat(String name, String description) {
-        return boatRepository.saveAndFlush(Boat.builder().name(name).description(description).build());
+        return boatRepository.saveAndFlush(
+                Boat.builder().name(name).description(description).build());
+    }
+
+    private Boat saveBoat(String name, String description, BoatStatus status, BoatType type) {
+        return boatRepository.saveAndFlush(
+                Boat.builder().name(name).description(description).status(status).type(type).build());
     }
 
     // ---------------------------------------------------------------------------
@@ -99,16 +104,31 @@ class BoatRepositoryTest {
         }
 
         @Test
-        @DisplayName("should persist name and description faithfully")
-        void should_persistNameAndDescription_when_saved() {
+        @DisplayName("should persist name, description, status, and type faithfully")
+        void should_persistAllFields_when_saved() {
             // Arrange & Act
-            Boat saved = saveBoat("Sea Explorer", "A luxury sailing boat");
+            Boat saved = saveBoat("Sea Explorer", "A luxury sailing boat", BoatStatus.UNDERWAY, BoatType.SAILBOAT);
 
             // Assert
             Optional<Boat> found = boatRepository.findById(saved.getId());
             assertThat(found).isPresent();
             assertThat(found.get().getName()).isEqualTo("Sea Explorer");
             assertThat(found.get().getDescription()).isEqualTo("A luxury sailing boat");
+            assertThat(found.get().getStatus()).isEqualTo(BoatStatus.UNDERWAY);
+            assertThat(found.get().getType()).isEqualTo(BoatType.SAILBOAT);
+        }
+
+        @Test
+        @DisplayName("should apply IN_PORT and YACHT defaults when status and type are not set explicitly")
+        void should_applyDefaults_when_statusAndTypeAreNotSet() {
+            // Arrange & Act — saveBoat(name, desc) uses the 2-arg helper with no status/type
+            Boat saved = saveBoat("Default Boat", "No explicit status or type");
+
+            // Assert
+            Optional<Boat> found = boatRepository.findById(saved.getId());
+            assertThat(found).isPresent();
+            assertThat(found.get().getStatus()).isEqualTo(BoatStatus.IN_PORT);
+            assertThat(found.get().getType()).isEqualTo(BoatType.YACHT);
         }
 
         @Test
@@ -148,11 +168,15 @@ class BoatRepositoryTest {
             // Act — modify and save again (simulates service.update)
             saved.setName("Updated Name");
             saved.setDescription("Updated description");
+            saved.setStatus(BoatStatus.MAINTENANCE);
+            saved.setType(BoatType.FERRY);
             Boat updated = boatRepository.save(saved);
 
             // Assert
             assertThat(updated.getName()).isEqualTo("Updated Name");
             assertThat(updated.getDescription()).isEqualTo("Updated description");
+            assertThat(updated.getStatus()).isEqualTo(BoatStatus.MAINTENANCE);
+            assertThat(updated.getType()).isEqualTo(BoatType.FERRY);
             assertThat(boatRepository.count()).isEqualTo(1); // no duplicate created
         }
     }
@@ -213,24 +237,24 @@ class BoatRepositoryTest {
     }
 
     // ---------------------------------------------------------------------------
-    // findBySearchTerm — custom JPQL query
+    // findByFilters — custom JPQL query
     // ---------------------------------------------------------------------------
 
     @Nested
-    @DisplayName("findBySearchTerm() — custom JPQL search query")
-    class FindBySearchTerm {
+    @DisplayName("findByFilters() — custom JPQL search and filter query")
+    class FindByFilters {
 
         // --- no filter ---
 
         @Test
-        @DisplayName("should return all boats when search term is empty string")
-        void should_returnAllBoats_when_searchTermIsEmpty() {
+        @DisplayName("should return all boats when search term is empty and no filters are set")
+        void should_returnAllBoats_when_searchTermIsEmptyAndNoFilters() {
             // Arrange
             saveBoat("Boat One", "First");
             saveBoat("Boat Two", "Second");
 
             // Act
-            Page<Boat> result = boatRepository.findBySearchTerm("", PageRequest.of(0, 10));
+            Page<Boat> result = boatRepository.findByFilters("", null, null, PageRequest.of(0, 10));
 
             // Assert
             assertThat(result.getTotalElements()).isEqualTo(2);
@@ -243,7 +267,7 @@ class BoatRepositoryTest {
             saveBoat("Boat One", "First");
 
             // Act
-            Page<Boat> result = boatRepository.findBySearchTerm(null, PageRequest.of(0, 10));
+            Page<Boat> result = boatRepository.findByFilters(null, null, null, PageRequest.of(0, 10));
 
             // Assert
             assertThat(result.getTotalElements()).isEqualTo(1);
@@ -259,7 +283,7 @@ class BoatRepositoryTest {
             saveBoat("River Runner", "A river boat");
 
             // Act
-            Page<Boat> result = boatRepository.findBySearchTerm("Sea Explorer", PageRequest.of(0, 10));
+            Page<Boat> result = boatRepository.findByFilters("Sea Explorer", null, null, PageRequest.of(0, 10));
 
             // Assert
             assertThat(result.getTotalElements()).isEqualTo(1);
@@ -275,7 +299,7 @@ class BoatRepositoryTest {
             saveBoat("River Runner", "A river boat");
 
             // Act
-            Page<Boat> result = boatRepository.findBySearchTerm("Sea", PageRequest.of(0, 10));
+            Page<Boat> result = boatRepository.findByFilters("Sea", null, null, PageRequest.of(0, 10));
 
             // Assert
             assertThat(result.getTotalElements()).isEqualTo(2);
@@ -293,7 +317,7 @@ class BoatRepositoryTest {
             saveBoat("Boat Two", "A simple dinghy");
 
             // Act
-            Page<Boat> result = boatRepository.findBySearchTerm("luxury", PageRequest.of(0, 10));
+            Page<Boat> result = boatRepository.findByFilters("luxury", null, null, PageRequest.of(0, 10));
 
             // Assert
             assertThat(result.getTotalElements()).isEqualTo(1);
@@ -308,7 +332,7 @@ class BoatRepositoryTest {
             saveBoat("Simple Boat", "Basic transportation");
 
             // Act
-            Page<Boat> result = boatRepository.findBySearchTerm("touring", PageRequest.of(0, 10));
+            Page<Boat> result = boatRepository.findByFilters("touring", null, null, PageRequest.of(0, 10));
 
             // Assert
             assertThat(result.getTotalElements()).isEqualTo(1);
@@ -324,7 +348,7 @@ class BoatRepositoryTest {
             saveBoat("SEA EXPLORER", "A boat");
 
             // Act — search with all lowercase
-            Page<Boat> result = boatRepository.findBySearchTerm("sea explorer", PageRequest.of(0, 10));
+            Page<Boat> result = boatRepository.findByFilters("sea explorer", null, null, PageRequest.of(0, 10));
 
             // Assert
             assertThat(result.getTotalElements()).isEqualTo(1);
@@ -337,7 +361,7 @@ class BoatRepositoryTest {
             saveBoat("My Boat", "LUXURY YACHT");
 
             // Act
-            Page<Boat> result = boatRepository.findBySearchTerm("luxury yacht", PageRequest.of(0, 10));
+            Page<Boat> result = boatRepository.findByFilters("luxury yacht", null, null, PageRequest.of(0, 10));
 
             // Assert
             assertThat(result.getTotalElements()).isEqualTo(1);
@@ -352,7 +376,7 @@ class BoatRepositoryTest {
             saveBoat("Sea Explorer", "A sailing boat");
 
             // Act
-            Page<Boat> result = boatRepository.findBySearchTerm("nonexistent", PageRequest.of(0, 10));
+            Page<Boat> result = boatRepository.findByFilters("nonexistent", null, null, PageRequest.of(0, 10));
 
             // Assert
             assertThat(result.getTotalElements()).isEqualTo(0);
@@ -369,10 +393,160 @@ class BoatRepositoryTest {
             saveBoat("Sea Explorer", "Luxury vessel");
 
             // Act
-            Page<Boat> result = boatRepository.findBySearchTerm("boat", PageRequest.of(0, 10));
+            Page<Boat> result = boatRepository.findByFilters("boat", null, null, PageRequest.of(0, 10));
 
             // Assert — JPQL OR condition must not duplicate the row
             assertThat(result.getTotalElements()).isEqualTo(1);
+        }
+
+        // --- status filter ---
+
+        @Test
+        @DisplayName("should return only UNDERWAY boats when filtering by UNDERWAY status")
+        void should_returnOnlyUnderwayBoats_when_filterByUnderwayStatus() {
+            // Arrange
+            saveBoat("Active Vessel", "Out at sea", BoatStatus.UNDERWAY, BoatType.TRAWLER);
+            saveBoat("Docked Vessel", "At the pier", BoatStatus.IN_PORT, BoatType.YACHT);
+            saveBoat("Broken Vessel", "In the shop", BoatStatus.MAINTENANCE, BoatType.FERRY);
+
+            // Act
+            Page<Boat> result = boatRepository.findByFilters("", BoatStatus.UNDERWAY, null, PageRequest.of(0, 10));
+
+            // Assert
+            assertThat(result.getTotalElements()).isEqualTo(1);
+            assertThat(result.getContent().get(0).getName()).isEqualTo("Active Vessel");
+            assertThat(result.getContent().get(0).getStatus()).isEqualTo(BoatStatus.UNDERWAY);
+        }
+
+        @Test
+        @DisplayName("should return only IN_PORT boats when filtering by IN_PORT status")
+        void should_returnOnlyInPortBoats_when_filterByInPortStatus() {
+            // Arrange
+            saveBoat("Active Vessel", "Out at sea", BoatStatus.UNDERWAY, BoatType.TRAWLER);
+            saveBoat("Docked Vessel", "At the pier", BoatStatus.IN_PORT, BoatType.YACHT);
+            saveBoat("Second Dock", "Also docked", BoatStatus.IN_PORT, BoatType.SAILBOAT);
+
+            // Act
+            Page<Boat> result = boatRepository.findByFilters("", BoatStatus.IN_PORT, null, PageRequest.of(0, 10));
+
+            // Assert
+            assertThat(result.getTotalElements()).isEqualTo(2);
+            assertThat(result.getContent()).extracting(Boat::getStatus)
+                    .containsOnly(BoatStatus.IN_PORT);
+        }
+
+        @Test
+        @DisplayName("should return only MAINTENANCE boats when filtering by MAINTENANCE status")
+        void should_returnOnlyMaintenanceBoats_when_filterByMaintenanceStatus() {
+            // Arrange
+            saveBoat("Active Vessel", "Out at sea", BoatStatus.UNDERWAY, BoatType.TRAWLER);
+            saveBoat("Broken Vessel", "In the shop", BoatStatus.MAINTENANCE, BoatType.CARGO_SHIP);
+
+            // Act
+            Page<Boat> result = boatRepository.findByFilters("", BoatStatus.MAINTENANCE, null, PageRequest.of(0, 10));
+
+            // Assert
+            assertThat(result.getTotalElements()).isEqualTo(1);
+            assertThat(result.getContent().get(0).getStatus()).isEqualTo(BoatStatus.MAINTENANCE);
+        }
+
+        @Test
+        @DisplayName("should return all boats regardless of status when status filter is null")
+        void should_returnAllBoats_when_statusFilterIsNull() {
+            // Arrange
+            saveBoat("Underway Vessel", "At sea", BoatStatus.UNDERWAY, BoatType.TRAWLER);
+            saveBoat("Docked Vessel", "At pier", BoatStatus.IN_PORT, BoatType.YACHT);
+            saveBoat("Maintenance Vessel", "In shop", BoatStatus.MAINTENANCE, BoatType.FERRY);
+
+            // Act — null status means no filter
+            Page<Boat> result = boatRepository.findByFilters("", null, null, PageRequest.of(0, 10));
+
+            // Assert
+            assertThat(result.getTotalElements()).isEqualTo(3);
+        }
+
+        // --- type filter ---
+
+        @Test
+        @DisplayName("should return only SAILBOAT vessels when filtering by SAILBOAT type")
+        void should_returnOnlySailboats_when_filterBySailboatType() {
+            // Arrange
+            saveBoat("Sailboat One", "A sloop", BoatStatus.IN_PORT, BoatType.SAILBOAT);
+            saveBoat("Trawler One", "A fishing boat", BoatStatus.UNDERWAY, BoatType.TRAWLER);
+            saveBoat("Sailboat Two", "A ketch", BoatStatus.UNDERWAY, BoatType.SAILBOAT);
+
+            // Act
+            Page<Boat> result = boatRepository.findByFilters("", null, BoatType.SAILBOAT, PageRequest.of(0, 10));
+
+            // Assert
+            assertThat(result.getTotalElements()).isEqualTo(2);
+            assertThat(result.getContent()).extracting(Boat::getType)
+                    .containsOnly(BoatType.SAILBOAT);
+        }
+
+        @Test
+        @DisplayName("should return all boats regardless of type when type filter is null")
+        void should_returnAllBoats_when_typeFilterIsNull() {
+            // Arrange
+            saveBoat("Sailboat", "A sloop", BoatStatus.IN_PORT, BoatType.SAILBOAT);
+            saveBoat("Trawler", "A fishing boat", BoatStatus.UNDERWAY, BoatType.TRAWLER);
+            saveBoat("Cargo Ship", "A freighter", BoatStatus.UNDERWAY, BoatType.CARGO_SHIP);
+
+            // Act — null type means no filter
+            Page<Boat> result = boatRepository.findByFilters("", null, null, PageRequest.of(0, 10));
+
+            // Assert
+            assertThat(result.getTotalElements()).isEqualTo(3);
+        }
+
+        // --- combined status + type filter ---
+
+        @Test
+        @DisplayName("should apply both status and type filters when both are provided")
+        void should_returnOnlyMatchingBoats_when_filterByBothStatusAndType() {
+            // Arrange
+            saveBoat("Underway Trawler", "Fishing", BoatStatus.UNDERWAY, BoatType.TRAWLER);
+            saveBoat("Docked Trawler", "At pier", BoatStatus.IN_PORT, BoatType.TRAWLER);
+            saveBoat("Underway Ferry", "In service", BoatStatus.UNDERWAY, BoatType.FERRY);
+
+            // Act — only UNDERWAY TRAWLERs
+            Page<Boat> result = boatRepository.findByFilters("", BoatStatus.UNDERWAY, BoatType.TRAWLER, PageRequest.of(0, 10));
+
+            // Assert
+            assertThat(result.getTotalElements()).isEqualTo(1);
+            assertThat(result.getContent().get(0).getName()).isEqualTo("Underway Trawler");
+        }
+
+        @Test
+        @DisplayName("should return empty page when no boat matches the combined status and type filter")
+        void should_returnEmptyPage_when_noCombinedMatch() {
+            // Arrange — no MAINTENANCE YACHTs
+            saveBoat("Maintenance Ferry", "In shop", BoatStatus.MAINTENANCE, BoatType.FERRY);
+            saveBoat("Docked Yacht", "At pier", BoatStatus.IN_PORT, BoatType.YACHT);
+
+            // Act
+            Page<Boat> result = boatRepository.findByFilters("", BoatStatus.MAINTENANCE, BoatType.YACHT, PageRequest.of(0, 10));
+
+            // Assert
+            assertThat(result.getTotalElements()).isEqualTo(0);
+        }
+
+        // --- search + status filter ---
+
+        @Test
+        @DisplayName("should apply search and status filter together")
+        void should_returnMatchingBoats_when_searchAndStatusAreCombined() {
+            // Arrange
+            saveBoat("Sea Trawler", "Fishing vessel", BoatStatus.UNDERWAY, BoatType.TRAWLER);
+            saveBoat("Sea Ferry", "Passenger ferry", BoatStatus.IN_PORT, BoatType.FERRY);
+            saveBoat("River Ferry", "River service", BoatStatus.IN_PORT, BoatType.FERRY);
+
+            // Act — boats with "Sea" in name AND status = IN_PORT
+            Page<Boat> result = boatRepository.findByFilters("Sea", BoatStatus.IN_PORT, null, PageRequest.of(0, 10));
+
+            // Assert — only "Sea Ferry" matches both criteria
+            assertThat(result.getTotalElements()).isEqualTo(1);
+            assertThat(result.getContent().get(0).getName()).isEqualTo("Sea Ferry");
         }
 
         // --- pagination ---
@@ -386,7 +560,7 @@ class BoatRepositoryTest {
             }
 
             // Act
-            Page<Boat> firstPage = boatRepository.findBySearchTerm("", PageRequest.of(0, 10));
+            Page<Boat> firstPage = boatRepository.findByFilters("", null, null, PageRequest.of(0, 10));
 
             // Assert
             assertThat(firstPage.getContent()).hasSize(10);
@@ -404,7 +578,7 @@ class BoatRepositoryTest {
             }
 
             // Act
-            Page<Boat> lastPage = boatRepository.findBySearchTerm("", PageRequest.of(1, 10));
+            Page<Boat> lastPage = boatRepository.findByFilters("", null, null, PageRequest.of(1, 10));
 
             // Assert
             assertThat(lastPage.getContent()).hasSize(5);
@@ -418,7 +592,7 @@ class BoatRepositoryTest {
             saveBoat("Only Boat", "Just one");
 
             // Act — page 5 does not exist
-            Page<Boat> result = boatRepository.findBySearchTerm("", PageRequest.of(5, 10));
+            Page<Boat> result = boatRepository.findByFilters("", null, null, PageRequest.of(5, 10));
 
             // Assert
             assertThat(result.getContent()).isEmpty();
@@ -436,7 +610,7 @@ class BoatRepositoryTest {
             saveBoat("Mike Boat", "M");
 
             // Act
-            Page<Boat> result = boatRepository.findBySearchTerm("",
+            Page<Boat> result = boatRepository.findByFilters("", null, null,
                     PageRequest.of(0, 10, Sort.by("name").ascending()));
 
             // Assert
@@ -453,7 +627,7 @@ class BoatRepositoryTest {
             saveBoat("Mike Boat", "M");
 
             // Act
-            Page<Boat> result = boatRepository.findBySearchTerm("",
+            Page<Boat> result = boatRepository.findByFilters("", null, null,
                     PageRequest.of(0, 10, Sort.by("name").descending()));
 
             // Assert

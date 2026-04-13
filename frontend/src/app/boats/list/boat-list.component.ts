@@ -11,10 +11,11 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap, startWith, combineLatest, BehaviorSubject, EMPTY, catchError } from 'rxjs';
-import { BoatService, Boat, BoatPage } from '../../shared/services/boat.service';
+import { BoatService, Boat, BoatPage, BoatStatus, BoatType } from '../../shared/services/boat.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
 
-type StatusFilter = 'all' | 'active' | 'maintenance' | 'drydock';
+type StatusFilter = 'all' | BoatStatus;
+type TypeFilter = 'all' | BoatType;
 
 @Component({
   selector: 'app-boat-list',
@@ -61,34 +62,31 @@ type StatusFilter = 'all' | 'active' | 'maintenance' | 'drydock';
       <!-- Stats + filters row -->
       <div class="stats-filter-row">
         <div class="stat-block">
-          <div class="fleet-ready-label">FLEET READY</div>
-          <div class="fleet-ready-value">
-            <span class="fleet-pct">{{ fleetReadyPct }}%</span>
-          </div>
-          <div class="fleet-ready-sub">
-            <span class="in-port-chip">
-              <mat-icon>anchor</mat-icon>
-              {{ totalElements }} Vessel{{ totalElements !== 1 ? 's' : '' }}
-            </span>
-          </div>
+          <span class="fleet-ready-label">FLEET:</span>
+          <span class="fleet-total-chip">
+            <mat-icon>directions_boat</mat-icon>
+            {{ totalElements }} Vessels
+          </span>
         </div>
 
         <div class="filter-group">
           <div class="vessel-type-select">
-            <select class="type-select">
-              <option>All Vessel Types</option>
-              <option>Yacht</option>
-              <option>Commercial</option>
-              <option>Catamaran</option>
+            <select class="type-select" (change)="setTypeFilter($any($event.target).value)">
+              <option value="all">All Vessel Types</option>
+              <option value="SAILBOAT">Sailboat</option>
+              <option value="TRAWLER">Trawler</option>
+              <option value="CARGO_SHIP">Cargo Ship</option>
+              <option value="YACHT">Yacht</option>
+              <option value="FERRY">Ferry</option>
             </select>
             <mat-icon class="select-arrow">expand_more</mat-icon>
           </div>
 
           <div class="status-tabs">
             <button class="status-tab" [class.active]="statusFilter === 'all'" (click)="setStatusFilter('all')">All</button>
-            <button class="status-tab active-tab" [class.active]="statusFilter === 'active'" (click)="setStatusFilter('active')">Active</button>
-            <button class="status-tab maint-tab" [class.active]="statusFilter === 'maintenance'" (click)="setStatusFilter('maintenance')">Maintenance</button>
-            <button class="status-tab dock-tab" [class.active]="statusFilter === 'drydock'" (click)="setStatusFilter('drydock')">Dry Dock</button>
+            <button class="status-tab active-tab" [class.active]="statusFilter === 'UNDERWAY'" (click)="setStatusFilter('UNDERWAY')">Underway</button>
+            <button class="status-tab port-tab" [class.active]="statusFilter === 'IN_PORT'" (click)="setStatusFilter('IN_PORT')">In Port</button>
+            <button class="status-tab maint-tab" [class.active]="statusFilter === 'MAINTENANCE'" (click)="setStatusFilter('MAINTENANCE')">Maintenance</button>
           </div>
         </div>
       </div>
@@ -132,8 +130,8 @@ type StatusFilter = 'all' | 'active' | 'maintenance' | 'drydock';
             <div class="card-body">
               <div class="card-title-row">
                 <h3 class="vessel-name">{{ boat.name }}</h3>
-                <span class="status-badge" [ngClass]="getStatusClass(boat.id)">
-                  {{ getStatusLabel(boat.id) }}
+                <span class="status-badge" [ngClass]="getStatusClass(boat)">
+                  {{ getStatusLabel(boat) }}
                 </span>
               </div>
               <p class="vessel-desc">{{ boat.description || 'No description provided.' }}</p>
@@ -169,8 +167,8 @@ type StatusFilter = 'all' | 'active' | 'maintenance' | 'drydock';
               <h3 class="vessel-name">{{ boat.name }}</h3>
               <p class="vessel-desc">{{ boat.description || 'No description provided.' }}</p>
             </div>
-            <span class="status-badge list-status" [ngClass]="getStatusClass(boat.id)">
-              {{ getStatusLabel(boat.id) }}
+            <span class="status-badge list-status" [ngClass]="getStatusClass(boat)">
+              {{ getStatusLabel(boat) }}
             </span>
             <span class="list-date">
               <mat-icon>calendar_today</mat-icon>
@@ -330,36 +328,28 @@ type StatusFilter = 'all' | 'active' | 'maintenance' | 'drydock';
     .stat-block {
       display: flex;
       align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
+      gap: 8px;
     }
     .fleet-ready-label {
-      font-size: 0.65rem;
+      font-size: 0.75rem;
       font-weight: 700;
       letter-spacing: 1.5px;
       color: var(--color-text-secondary);
       text-transform: uppercase;
     }
-    .fleet-ready-value { display: flex; align-items: baseline; }
-    .fleet-pct {
-      font-size: 1.5rem;
-      font-weight: 800;
-      color: #16A34A;
-      line-height: 1;
-    }
-    .fleet-ready-sub { display: flex; align-items: center; }
-    .in-port-chip {
+
+    .fleet-total-chip {
       display: flex;
       align-items: center;
       gap: 4px;
-      background: #DCFCE7;
-      color: #16A34A;
+      background: #dce6f5;
+      color: #2a5298;
       border-radius: 20px;
       padding: 3px 10px 3px 6px;
       font-size: 0.75rem;
       font-weight: 600;
     }
-    .in-port-chip mat-icon { font-size: 14px; width: 14px; height: 14px; }
+    .fleet-total-chip mat-icon { font-size: 14px; width: 14px; height: 14px; }
 
     .filter-group {
       display: flex;
@@ -425,8 +415,8 @@ type StatusFilter = 'all' | 'active' | 'maintenance' | 'drydock';
       color: white;
     }
     .status-tab.active-tab.active { background: #16A34A; }
+    .status-tab.port-tab.active { background: #2a5298; }
     .status-tab.maint-tab.active { background: #D97706; }
-    .status-tab.dock-tab.active { background: #2563EB; }
 
     /* ── Loading bar ── */
     .top-loader {
@@ -659,9 +649,9 @@ type StatusFilter = 'all' | 'active' | 'maintenance' | 'drydock';
     .card-icon-btn-danger:hover { background: #dc2626; transform: translateY(-1px); }
 
     .card-icon-btn-view {
-      background: #2563EB;
+      background: #2a5298;
     }
-    .card-icon-btn-view:hover { background: #1d4ed8; transform: translateY(-1px); }
+    .card-icon-btn-view:hover { background: #1a3a6b; transform: translateY(-1px); }
 
     /* ── List view ── */
     .vessel-grid--list {
@@ -859,8 +849,8 @@ export class BoatListComponent implements OnInit, OnDestroy {
   pageSize = Number(localStorage.getItem('fleet_pageSize') ?? '8');
   sortBy = 'createdAt';
   sortDir = 'desc';
-  statusFilter: StatusFilter = 'active';
-  fleetReadyPct = 84;
+  statusFilter: StatusFilter = 'all';
+  typeFilter: TypeFilter = 'all';
   maxCols = 2;
 
   searchControl = new FormControl('');
@@ -896,7 +886,11 @@ export class BoatListComponent implements OnInit, OnDestroy {
         this.error = '';
         this.currentPage = 0;
         try { this.cdr.detectChanges(); } catch {}
-        return this.boatService.getBoats(search ?? '', this.currentPage, this.pageSize, this.sortBy, this.sortDir).pipe(
+        return this.boatService.getBoats(
+          search ?? '', this.currentPage, this.pageSize, this.sortBy, this.sortDir,
+          this.statusFilter === 'all' ? '' : this.statusFilter,
+          this.typeFilter === 'all' ? '' : this.typeFilter
+        ).pipe(
           catchError(err => {
             this.handleError(err);
             return EMPTY;
@@ -917,6 +911,14 @@ export class BoatListComponent implements OnInit, OnDestroy {
 
   setStatusFilter(filter: StatusFilter): void {
     this.statusFilter = filter;
+    this.currentPage = 0;
+    this.loadPage();
+  }
+
+  setTypeFilter(filter: TypeFilter): void {
+    this.typeFilter = filter;
+    this.currentPage = 0;
+    this.loadPage();
   }
 
   onPageChange(event: PageEvent): void {
@@ -932,18 +934,20 @@ export class BoatListComponent implements OnInit, OnDestroy {
     this.loadPage();
   }
 
-  getStatusLabel(id: number): string {
-    const idx = id % 3;
-    if (idx === 0) return 'ACTIVE';
-    if (idx === 1) return 'MAINTENANCE';
-    return 'IN PORT';
+  getStatusLabel(boat: Boat): string {
+    switch (boat.status) {
+      case 'UNDERWAY': return 'UNDERWAY';
+      case 'MAINTENANCE': return 'MAINTENANCE';
+      case 'IN_PORT': return 'IN PORT';
+    }
   }
 
-  getStatusClass(id: number): string {
-    const idx = id % 3;
-    if (idx === 0) return 'badge-active';
-    if (idx === 1) return 'badge-maintenance';
-    return 'badge-port';
+  getStatusClass(boat: Boat): string {
+    switch (boat.status) {
+      case 'UNDERWAY': return 'badge-active';
+      case 'MAINTENANCE': return 'badge-maintenance';
+      case 'IN_PORT': return 'badge-port';
+    }
   }
 
   get isListView(): boolean {
@@ -963,7 +967,9 @@ export class BoatListComponent implements OnInit, OnDestroy {
       this.currentPage,
       this.pageSize,
       this.sortBy,
-      this.sortDir
+      this.sortDir,
+      this.statusFilter === 'all' ? '' : this.statusFilter,
+      this.typeFilter === 'all' ? '' : this.typeFilter
     ).subscribe({
       next: (page) => this.handlePage(page),
       error: (err) => {

@@ -2,6 +2,8 @@ package com.boatmanagement.service;
 
 import com.boatmanagement.dto.BoatDto;
 import com.boatmanagement.entity.Boat;
+import com.boatmanagement.entity.BoatStatus;
+import com.boatmanagement.entity.BoatType;
 import com.boatmanagement.exception.BoatNotFoundException;
 import com.boatmanagement.mapper.BoatMapper;
 import com.boatmanagement.repository.BoatRepository;
@@ -24,15 +26,17 @@ public class BoatService {
     private final BoatRepository boatRepository;
     private final BoatMapper boatMapper;
 
-    public BoatDto.PageResponse findAll(String search, int page, int size, String sortBy, String sortDir) {
-        log.debug("Finding all boats - search: '{}', page: {}, size: {} by '{}'", search, page, size, MDC.get("user"));
+    public BoatDto.PageResponse findAll(String search, BoatStatus status, BoatType type,
+                                        int page, int size, String sortBy, String sortDir) {
+        log.debug("Finding all boats - search: '{}', status: {}, type: {}, page: {}, size: {} by '{}'",
+                search, status, type, page, size, MDC.get("user"));
 
         Sort sort = sortDir.equalsIgnoreCase("desc")
                 ? Sort.by(sortBy).descending()
                 : Sort.by(sortBy).ascending();
 
         Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Boat> boatPage = boatRepository.findBySearchTerm(search, pageable);
+        Page<Boat> boatPage = boatRepository.findByFilters(search, status, type, pageable);
 
         return BoatDto.PageResponse.builder()
                 .content(boatPage.getContent().stream().map(boatMapper::toResponse).toList())

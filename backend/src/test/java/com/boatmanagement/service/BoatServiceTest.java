@@ -2,6 +2,8 @@ package com.boatmanagement.service;
 
 import com.boatmanagement.dto.BoatDto;
 import com.boatmanagement.entity.Boat;
+import com.boatmanagement.entity.BoatStatus;
+import com.boatmanagement.entity.BoatType;
 import com.boatmanagement.exception.BoatNotFoundException;
 import com.boatmanagement.mapper.BoatMapper;
 import com.boatmanagement.repository.BoatRepository;
@@ -27,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -72,13 +75,16 @@ class BoatServiceTest {
             // Arrange
             Boat boat = Boat.builder().id(1L).name("Sea Explorer").description("A sailing boat").build();
             Page<Boat> page = new PageImpl<>(List.of(boat), PageRequest.of(0, 10), 1);
-            BoatDto.Response responseDto = new BoatDto.Response(1L, "Sea Explorer", "A sailing boat", Instant.now());
+            BoatDto.Response responseDto = BoatDto.Response.builder()
+                    .id(1L).name("Sea Explorer").description("A sailing boat")
+                    .status(BoatStatus.IN_PORT).type(BoatType.YACHT)
+                    .createdAt(Instant.now()).build();
 
-            when(boatRepository.findBySearchTerm(eq(""), any(Pageable.class))).thenReturn(page);
+            when(boatRepository.findByFilters(eq(""), isNull(), isNull(), any(Pageable.class))).thenReturn(page);
             when(boatMapper.toResponse(boat)).thenReturn(responseDto);
 
             // Act
-            BoatDto.PageResponse result = boatService.findAll("", 0, 10, "createdAt", "desc");
+            BoatDto.PageResponse result = boatService.findAll("", null, null, 0, 10, "createdAt", "desc");
 
             // Assert
             assertThat(result.getContent()).hasSize(1);
@@ -93,10 +99,10 @@ class BoatServiceTest {
         @DisplayName("should return empty page response when no boats exist")
         void should_returnEmptyPageResponse_when_noBoatsExist() {
             // Arrange
-            when(boatRepository.findBySearchTerm(any(), any(Pageable.class))).thenReturn(Page.empty());
+            when(boatRepository.findByFilters(any(), any(), any(), any(Pageable.class))).thenReturn(Page.empty());
 
             // Act
-            BoatDto.PageResponse result = boatService.findAll("", 0, 10, "createdAt", "desc");
+            BoatDto.PageResponse result = boatService.findAll("", null, null, 0, 10, "createdAt", "desc");
 
             // Assert
             assertThat(result.getContent()).isEmpty();
@@ -107,13 +113,56 @@ class BoatServiceTest {
         @DisplayName("should forward the search term to the repository")
         void should_passSearchTermToRepository_when_searchIsProvided() {
             // Arrange
-            when(boatRepository.findBySearchTerm(eq("explorer"), any(Pageable.class))).thenReturn(Page.empty());
+            when(boatRepository.findByFilters(eq("explorer"), isNull(), isNull(), any(Pageable.class)))
+                    .thenReturn(Page.empty());
 
             // Act
-            boatService.findAll("explorer", 0, 10, "name", "asc");
+            boatService.findAll("explorer", null, null, 0, 10, "name", "asc");
 
             // Assert — repository is called with the exact search term
-            verify(boatRepository).findBySearchTerm(eq("explorer"), any(Pageable.class));
+            verify(boatRepository).findByFilters(eq("explorer"), isNull(), isNull(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("should forward status filter to the repository when status is provided")
+        void should_passStatusFilterToRepository_when_statusIsProvided() {
+            // Arrange
+            when(boatRepository.findByFilters(eq(""), eq(BoatStatus.UNDERWAY), isNull(), any(Pageable.class)))
+                    .thenReturn(Page.empty());
+
+            // Act
+            boatService.findAll("", BoatStatus.UNDERWAY, null, 0, 10, "createdAt", "desc");
+
+            // Assert
+            verify(boatRepository).findByFilters(eq(""), eq(BoatStatus.UNDERWAY), isNull(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("should forward type filter to the repository when type is provided")
+        void should_passTypeFilterToRepository_when_typeIsProvided() {
+            // Arrange
+            when(boatRepository.findByFilters(eq(""), isNull(), eq(BoatType.FERRY), any(Pageable.class)))
+                    .thenReturn(Page.empty());
+
+            // Act
+            boatService.findAll("", null, BoatType.FERRY, 0, 10, "createdAt", "desc");
+
+            // Assert
+            verify(boatRepository).findByFilters(eq(""), isNull(), eq(BoatType.FERRY), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("should forward both status and type filters when both are provided")
+        void should_passBothFiltersToRepository_when_bothStatusAndTypeAreProvided() {
+            // Arrange
+            when(boatRepository.findByFilters(eq(""), eq(BoatStatus.MAINTENANCE), eq(BoatType.TRAWLER), any(Pageable.class)))
+                    .thenReturn(Page.empty());
+
+            // Act
+            boatService.findAll("", BoatStatus.MAINTENANCE, BoatType.TRAWLER, 0, 10, "createdAt", "desc");
+
+            // Assert
+            verify(boatRepository).findByFilters(eq(""), eq(BoatStatus.MAINTENANCE), eq(BoatType.TRAWLER), any(Pageable.class));
         }
 
         @Test
@@ -124,12 +173,14 @@ class BoatServiceTest {
             Boat boat2 = Boat.builder().id(2L).name("Boat Two").build();
             Page<Boat> page = new PageImpl<>(List.of(boat1, boat2));
 
-            when(boatRepository.findBySearchTerm(any(), any())).thenReturn(page);
-            when(boatMapper.toResponse(boat1)).thenReturn(new BoatDto.Response(1L, "Boat One", null, null));
-            when(boatMapper.toResponse(boat2)).thenReturn(new BoatDto.Response(2L, "Boat Two", null, null));
+            when(boatRepository.findByFilters(any(), any(), any(), any())).thenReturn(page);
+            when(boatMapper.toResponse(boat1)).thenReturn(
+                    BoatDto.Response.builder().id(1L).name("Boat One").build());
+            when(boatMapper.toResponse(boat2)).thenReturn(
+                    BoatDto.Response.builder().id(2L).name("Boat Two").build());
 
             // Act
-            BoatDto.PageResponse result = boatService.findAll("", 0, 10, "createdAt", "desc");
+            BoatDto.PageResponse result = boatService.findAll("", null, null, 0, 10, "createdAt", "desc");
 
             // Assert
             assertThat(result.getContent()).hasSize(2);
@@ -141,13 +192,13 @@ class BoatServiceTest {
         @DisplayName("should apply ascending sort when sortDir is 'asc'")
         void should_applyAscendingSort_when_sortDirIsAsc() {
             // Arrange
-            when(boatRepository.findBySearchTerm(any(), any(Pageable.class))).thenReturn(Page.empty());
+            when(boatRepository.findByFilters(any(), any(), any(), any(Pageable.class))).thenReturn(Page.empty());
 
             // Act
-            boatService.findAll("", 0, 10, "name", "asc");
+            boatService.findAll("", null, null, 0, 10, "name", "asc");
 
             // Assert — pageable must carry ASC direction on the requested field
-            verify(boatRepository).findBySearchTerm(eq(""), argThat(pageable ->
+            verify(boatRepository).findByFilters(eq(""), isNull(), isNull(), argThat(pageable ->
                     pageable.getSort().getOrderFor("name") != null &&
                     pageable.getSort().getOrderFor("name").getDirection() == Sort.Direction.ASC
             ));
@@ -157,13 +208,13 @@ class BoatServiceTest {
         @DisplayName("should apply descending sort when sortDir is 'desc'")
         void should_applyDescendingSort_when_sortDirIsDesc() {
             // Arrange
-            when(boatRepository.findBySearchTerm(any(), any(Pageable.class))).thenReturn(Page.empty());
+            when(boatRepository.findByFilters(any(), any(), any(), any(Pageable.class))).thenReturn(Page.empty());
 
             // Act
-            boatService.findAll("", 0, 10, "name", "desc");
+            boatService.findAll("", null, null, 0, 10, "name", "desc");
 
             // Assert
-            verify(boatRepository).findBySearchTerm(eq(""), argThat(pageable ->
+            verify(boatRepository).findByFilters(eq(""), isNull(), isNull(), argThat(pageable ->
                     pageable.getSort().getOrderFor("name") != null &&
                     pageable.getSort().getOrderFor("name").getDirection() == Sort.Direction.DESC
             ));
@@ -173,13 +224,13 @@ class BoatServiceTest {
         @DisplayName("should default to ascending sort for any sortDir value that is not 'desc'")
         void should_defaultToAscendingSort_when_sortDirIsNotDesc() {
             // Arrange — "ASC", "random", "" all produce ascending order
-            when(boatRepository.findBySearchTerm(any(), any(Pageable.class))).thenReturn(Page.empty());
+            when(boatRepository.findByFilters(any(), any(), any(), any(Pageable.class))).thenReturn(Page.empty());
 
             // Act
-            boatService.findAll("", 0, 10, "createdAt", "ASC");
+            boatService.findAll("", null, null, 0, 10, "createdAt", "ASC");
 
             // Assert
-            verify(boatRepository).findBySearchTerm(eq(""), argThat(pageable ->
+            verify(boatRepository).findByFilters(eq(""), isNull(), isNull(), argThat(pageable ->
                     pageable.getSort().getOrderFor("createdAt") != null &&
                     pageable.getSort().getOrderFor("createdAt").getDirection() == Sort.Direction.ASC
             ));
@@ -191,10 +242,10 @@ class BoatServiceTest {
             // Arrange — 25 total elements, page 0, size 10 → not the last page
             Pageable pageable = PageRequest.of(0, 10);
             Page<Boat> page = new PageImpl<>(List.of(), pageable, 25);
-            when(boatRepository.findBySearchTerm(any(), any())).thenReturn(page);
+            when(boatRepository.findByFilters(any(), any(), any(), any())).thenReturn(page);
 
             // Act
-            BoatDto.PageResponse result = boatService.findAll("", 0, 10, "createdAt", "desc");
+            BoatDto.PageResponse result = boatService.findAll("", null, null, 0, 10, "createdAt", "desc");
 
             // Assert
             assertThat(result.isLast()).isFalse();
@@ -215,7 +266,10 @@ class BoatServiceTest {
         void should_returnBoatResponse_when_boatExists() {
             // Arrange
             Boat boat = Boat.builder().id(1L).name("Sea Explorer").description("A sailing boat").build();
-            BoatDto.Response expected = new BoatDto.Response(1L, "Sea Explorer", "A sailing boat", Instant.now());
+            BoatDto.Response expected = BoatDto.Response.builder()
+                    .id(1L).name("Sea Explorer").description("A sailing boat")
+                    .status(BoatStatus.IN_PORT).type(BoatType.YACHT)
+                    .createdAt(Instant.now()).build();
 
             when(boatRepository.findById(1L)).thenReturn(Optional.of(boat));
             when(boatMapper.toResponse(boat)).thenReturn(expected);
@@ -227,6 +281,8 @@ class BoatServiceTest {
             assertThat(result.getId()).isEqualTo(1L);
             assertThat(result.getName()).isEqualTo("Sea Explorer");
             assertThat(result.getDescription()).isEqualTo("A sailing boat");
+            assertThat(result.getStatus()).isEqualTo(BoatStatus.IN_PORT);
+            assertThat(result.getType()).isEqualTo(BoatType.YACHT);
         }
 
         @Test
@@ -278,10 +334,15 @@ class BoatServiceTest {
         @DisplayName("should persist, map, and return the created boat response")
         void should_saveAndReturnResponse_when_requestIsValid() {
             // Arrange
-            BoatDto.Request request = new BoatDto.Request("New Boat", "A new boat");
+            BoatDto.Request request = BoatDto.Request.builder()
+                    .name("New Boat").description("A new boat")
+                    .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
             Boat unsaved = Boat.builder().name("New Boat").description("A new boat").build();
-            Boat saved  = Boat.builder().id(1L).name("New Boat").description("A new boat").build();
-            BoatDto.Response expected = new BoatDto.Response(1L, "New Boat", "A new boat", Instant.now());
+            Boat saved   = Boat.builder().id(1L).name("New Boat").description("A new boat").build();
+            BoatDto.Response expected = BoatDto.Response.builder()
+                    .id(1L).name("New Boat").description("A new boat")
+                    .status(BoatStatus.IN_PORT).type(BoatType.YACHT)
+                    .createdAt(Instant.now()).build();
 
             when(boatMapper.toEntity(request)).thenReturn(unsaved);
             when(boatRepository.save(unsaved)).thenReturn(saved);
@@ -293,6 +354,8 @@ class BoatServiceTest {
             // Assert
             assertThat(result.getId()).isEqualTo(1L);
             assertThat(result.getName()).isEqualTo("New Boat");
+            assertThat(result.getStatus()).isEqualTo(BoatStatus.IN_PORT);
+            assertThat(result.getType()).isEqualTo(BoatType.YACHT);
             verify(boatMapper).toEntity(request);
             verify(boatRepository).save(unsaved);
             verify(boatMapper).toResponse(saved);
@@ -302,10 +365,15 @@ class BoatServiceTest {
         @DisplayName("should persist a boat without a description (optional field)")
         void should_saveBoatWithoutDescription_when_descriptionIsNull() {
             // Arrange — description is optional per the domain model
-            BoatDto.Request request = new BoatDto.Request("Boat Without Desc", null);
+            BoatDto.Request request = BoatDto.Request.builder()
+                    .name("Boat Without Desc")
+                    .status(BoatStatus.UNDERWAY).type(BoatType.SAILBOAT).build();
             Boat unsaved = Boat.builder().name("Boat Without Desc").build();
             Boat saved   = Boat.builder().id(2L).name("Boat Without Desc").build();
-            BoatDto.Response expected = new BoatDto.Response(2L, "Boat Without Desc", null, Instant.now());
+            BoatDto.Response expected = BoatDto.Response.builder()
+                    .id(2L).name("Boat Without Desc")
+                    .status(BoatStatus.UNDERWAY).type(BoatType.SAILBOAT)
+                    .createdAt(Instant.now()).build();
 
             when(boatMapper.toEntity(request)).thenReturn(unsaved);
             when(boatRepository.save(unsaved)).thenReturn(saved);
@@ -331,10 +399,15 @@ class BoatServiceTest {
         @DisplayName("should update fields and return the updated response")
         void should_updateAndReturnResponse_when_boatExists() {
             // Arrange
-            BoatDto.Request request = new BoatDto.Request("Updated Name", "Updated description");
+            BoatDto.Request request = BoatDto.Request.builder()
+                    .name("Updated Name").description("Updated description")
+                    .status(BoatStatus.UNDERWAY).type(BoatType.CARGO_SHIP).build();
             Boat existing = Boat.builder().id(1L).name("Old Name").description("Old description").build();
             Boat saved    = Boat.builder().id(1L).name("Updated Name").description("Updated description").build();
-            BoatDto.Response expected = new BoatDto.Response(1L, "Updated Name", "Updated description", Instant.now());
+            BoatDto.Response expected = BoatDto.Response.builder()
+                    .id(1L).name("Updated Name").description("Updated description")
+                    .status(BoatStatus.UNDERWAY).type(BoatType.CARGO_SHIP)
+                    .createdAt(Instant.now()).build();
 
             when(boatRepository.findById(1L)).thenReturn(Optional.of(existing));
             when(boatRepository.save(existing)).thenReturn(saved);
@@ -346,6 +419,8 @@ class BoatServiceTest {
             // Assert
             assertThat(result.getName()).isEqualTo("Updated Name");
             assertThat(result.getDescription()).isEqualTo("Updated description");
+            assertThat(result.getStatus()).isEqualTo(BoatStatus.UNDERWAY);
+            assertThat(result.getType()).isEqualTo(BoatType.CARGO_SHIP);
 
             // Verify that updateEntity was called to mutate the existing entity in-place
             verify(boatMapper).updateEntity(existing, request);
@@ -358,8 +433,12 @@ class BoatServiceTest {
             // Arrange
             when(boatRepository.findById(99L)).thenReturn(Optional.empty());
 
+            BoatDto.Request request = BoatDto.Request.builder()
+                    .name("Name").description("Desc")
+                    .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
+
             // Act & Assert
-            assertThatThrownBy(() -> boatService.update(99L, new BoatDto.Request("Name", "Desc")))
+            assertThatThrownBy(() -> boatService.update(99L, request))
                     .isInstanceOf(BoatNotFoundException.class)
                     .hasMessageContaining("99");
 
@@ -373,8 +452,12 @@ class BoatServiceTest {
             // Arrange
             when(boatRepository.findById(any())).thenReturn(Optional.empty());
 
+            BoatDto.Request request = BoatDto.Request.builder()
+                    .name("Name").description("Desc")
+                    .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
+
             // Act & Assert
-            assertThatThrownBy(() -> boatService.update(1L, new BoatDto.Request("Name", "Desc")))
+            assertThatThrownBy(() -> boatService.update(1L, request))
                     .isInstanceOf(BoatNotFoundException.class);
 
             verifyNoInteractions(boatMapper);

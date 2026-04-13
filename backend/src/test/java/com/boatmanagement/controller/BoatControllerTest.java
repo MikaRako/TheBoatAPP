@@ -1,6 +1,8 @@
 package com.boatmanagement.controller;
 
 import com.boatmanagement.dto.BoatDto;
+import com.boatmanagement.entity.BoatStatus;
+import com.boatmanagement.entity.BoatType;
 import com.boatmanagement.exception.BoatNotFoundException;
 import com.boatmanagement.service.BoatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,6 +25,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -91,7 +94,8 @@ class BoatControllerTest {
                                         .page(0).size(10).totalElements(1).totalPages(1).last(true)
                                         .build();
 
-                        when(boatService.findAll(any(), anyInt(), anyInt(), any(), any())).thenReturn(pageResponse);
+                        when(boatService.findAll(any(), any(), any(), anyInt(), anyInt(), any(), any()))
+                                        .thenReturn(pageResponse);
 
                         // Act & Assert
                         mockMvc.perform(get("/api/boats").with(jwt()))
@@ -118,7 +122,7 @@ class BoatControllerTest {
                 @DisplayName("should forward all query parameters to the service")
                 void should_forwardQueryParamsToService_when_paramsAreProvided() throws Exception {
                         // Arrange
-                        when(boatService.findAll("explorer", 2, 5, "name", "asc"))
+                        when(boatService.findAll("explorer", null, null, 2, 5, "name", "asc"))
                                         .thenReturn(BoatDto.PageResponse.builder()
                                                         .content(List.of()).page(2).size(5).totalElements(0)
                                                         .totalPages(0).last(true).build());
@@ -133,7 +137,7 @@ class BoatControllerTest {
                                         .andExpect(status().isOk());
 
                         // Assert — service receives exactly what the controller received
-                        verify(boatService).findAll("explorer", 2, 5, "name", "asc");
+                        verify(boatService).findAll("explorer", null, null, 2, 5, "name", "asc");
                 }
 
                 @Test
@@ -141,7 +145,7 @@ class BoatControllerTest {
                 @DisplayName("should use default values (search='', page=0, size=10, sortBy=createdAt, sortDir=desc)")
                 void should_useDefaultQueryParams_when_noneProvided() throws Exception {
                         // Arrange
-                        when(boatService.findAll("", 0, 10, "createdAt", "desc"))
+                        when(boatService.findAll("", null, null, 0, 10, "createdAt", "desc"))
                                         .thenReturn(BoatDto.PageResponse.builder()
                                                         .content(List.of()).page(0).size(10).totalElements(0)
                                                         .totalPages(0).last(true).build());
@@ -150,7 +154,27 @@ class BoatControllerTest {
                         mockMvc.perform(get("/api/boats").with(jwt()))
                                         .andExpect(status().isOk());
 
-                        verify(boatService).findAll("", 0, 10, "createdAt", "desc");
+                        verify(boatService).findAll("", null, null, 0, 10, "createdAt", "desc");
+                }
+
+                @Test
+                @WithMockUser(username = "testuser")
+                @DisplayName("should forward status and type filter params to the service")
+                void should_forwardStatusAndTypeFiltersToService_when_paramsAreProvided() throws Exception {
+                        // Arrange
+                        when(boatService.findAll("", BoatStatus.UNDERWAY, BoatType.SAILBOAT, 0, 10, "createdAt", "desc"))
+                                        .thenReturn(BoatDto.PageResponse.builder()
+                                                        .content(List.of()).page(0).size(10).totalElements(0)
+                                                        .totalPages(0).last(true).build());
+
+                        // Act
+                        mockMvc.perform(get("/api/boats").with(jwt())
+                                        .param("status", "UNDERWAY")
+                                        .param("type", "SAILBOAT"))
+                                        .andExpect(status().isOk());
+
+                        // Assert — status and type are correctly converted from String to enum by Spring MVC
+                        verify(boatService).findAll("", BoatStatus.UNDERWAY, BoatType.SAILBOAT, 0, 10, "createdAt", "desc");
                 }
         }
 
@@ -169,6 +193,7 @@ class BoatControllerTest {
                         // Arrange
                         BoatDto.Response response = BoatDto.Response.builder()
                                         .id(1L).name("Sea Explorer").description("A sailing boat")
+                                        .status(BoatStatus.IN_PORT).type(BoatType.YACHT)
                                         .createdAt(Instant.now()).build();
 
                         when(boatService.findById(1L)).thenReturn(response);
@@ -179,6 +204,8 @@ class BoatControllerTest {
                                         .andExpect(jsonPath("$.id").value(1))
                                         .andExpect(jsonPath("$.name").value("Sea Explorer"))
                                         .andExpect(jsonPath("$.description").value("A sailing boat"))
+                                        .andExpect(jsonPath("$.status").value("IN_PORT"))
+                                        .andExpect(jsonPath("$.type").value("YACHT"))
                                         .andExpect(jsonPath("$.createdAt").isNotEmpty());
                 }
 
@@ -219,10 +246,13 @@ class BoatControllerTest {
                 @DisplayName("should return 201 with created boat when request is valid")
                 void should_return201WithCreatedBoat_when_requestIsValid() throws Exception {
                         // Arrange
-                        BoatDto.Request request = new BoatDto.Request("New Boat", "A new boat");
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("New Boat").description("A new boat")
+                                        .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
                         BoatDto.Response response = BoatDto.Response.builder()
-                                        .id(1L).name("New Boat").description("A new boat").createdAt(Instant.now())
-                                        .build();
+                                        .id(1L).name("New Boat").description("A new boat")
+                                        .status(BoatStatus.IN_PORT).type(BoatType.YACHT)
+                                        .createdAt(Instant.now()).build();
 
                         when(boatService.create(any(BoatDto.Request.class))).thenReturn(response);
 
@@ -233,7 +263,9 @@ class BoatControllerTest {
                                         .andExpect(status().isCreated())
                                         .andExpect(jsonPath("$.id").value(1))
                                         .andExpect(jsonPath("$.name").value("New Boat"))
-                                        .andExpect(jsonPath("$.description").value("A new boat"));
+                                        .andExpect(jsonPath("$.description").value("A new boat"))
+                                        .andExpect(jsonPath("$.status").value("IN_PORT"))
+                                        .andExpect(jsonPath("$.type").value("YACHT"));
                 }
 
                 @Test
@@ -241,9 +273,13 @@ class BoatControllerTest {
                 @DisplayName("should return 201 when description is absent (optional field)")
                 void should_return201_when_descriptionIsAbsent() throws Exception {
                         // Arrange — description is not required
-                        BoatDto.Request request = new BoatDto.Request("Minimal Boat", null);
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("Minimal Boat")
+                                        .status(BoatStatus.UNDERWAY).type(BoatType.TRAWLER).build();
                         BoatDto.Response response = BoatDto.Response.builder()
-                                        .id(2L).name("Minimal Boat").description(null).createdAt(Instant.now()).build();
+                                        .id(2L).name("Minimal Boat")
+                                        .status(BoatStatus.UNDERWAY).type(BoatType.TRAWLER)
+                                        .createdAt(Instant.now()).build();
 
                         when(boatService.create(any(BoatDto.Request.class))).thenReturn(response);
 
@@ -260,7 +296,9 @@ class BoatControllerTest {
                 @DisplayName("should return 400 when name is blank (empty string)")
                 void should_return400_when_nameIsBlank() throws Exception {
                         // Arrange — empty string fails @NotBlank
-                        BoatDto.Request request = new BoatDto.Request("", "Some description");
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("").description("Some description")
+                                        .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
 
                         // Act & Assert
                         mockMvc.perform(post("/api/boats").with(jwt())
@@ -277,7 +315,9 @@ class BoatControllerTest {
                 @DisplayName("should return 400 when name is whitespace only (e.g. '   ')")
                 void should_return400_when_nameIsWhitespaceOnly() throws Exception {
                         // Arrange — whitespace-only also fails @NotBlank
-                        BoatDto.Request request = new BoatDto.Request("   ", "Some description");
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("   ").description("Some description")
+                                        .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
 
                         // Act & Assert
                         mockMvc.perform(post("/api/boats").with(jwt())
@@ -292,8 +332,40 @@ class BoatControllerTest {
                 @WithMockUser(username = "testuser")
                 @DisplayName("should return 400 when name is missing from the JSON body")
                 void should_return400_when_nameIsAbsent() throws Exception {
-                        // Arrange — JSON with no "name" key
+                        // Arrange — JSON with no "name", "status", or "type" key
                         String requestJson = "{\"description\": \"Some description\"}";
+
+                        // Act & Assert
+                        mockMvc.perform(post("/api/boats").with(jwt())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(requestJson))
+                                        .andExpect(status().isBadRequest());
+
+                        verifyNoInteractions(boatService);
+                }
+
+                @Test
+                @WithMockUser(username = "testuser")
+                @DisplayName("should return 400 when status is absent")
+                void should_return400_when_statusIsAbsent() throws Exception {
+                        // Arrange — status is required (@NotNull)
+                        String requestJson = "{\"name\": \"My Boat\", \"type\": \"YACHT\"}";
+
+                        // Act & Assert
+                        mockMvc.perform(post("/api/boats").with(jwt())
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(requestJson))
+                                        .andExpect(status().isBadRequest());
+
+                        verifyNoInteractions(boatService);
+                }
+
+                @Test
+                @WithMockUser(username = "testuser")
+                @DisplayName("should return 400 when type is absent")
+                void should_return400_when_typeIsAbsent() throws Exception {
+                        // Arrange — type is required (@NotNull)
+                        String requestJson = "{\"name\": \"My Boat\", \"status\": \"IN_PORT\"}";
 
                         // Act & Assert
                         mockMvc.perform(post("/api/boats").with(jwt())
@@ -309,7 +381,9 @@ class BoatControllerTest {
                 @DisplayName("should return 400 when description exceeds 2000 characters")
                 void should_return400_when_descriptionExceedsMaxLength() throws Exception {
                         // Arrange — 2001 chars exceeds the @Size(max=2000) constraint
-                        BoatDto.Request request = new BoatDto.Request("Valid Name", "x".repeat(2001));
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("Valid Name").description("x".repeat(2001))
+                                        .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
 
                         // Act & Assert
                         mockMvc.perform(post("/api/boats").with(jwt())
@@ -325,9 +399,12 @@ class BoatControllerTest {
                 @DisplayName("should return 201 when name is exactly 1 character (lower boundary)")
                 void should_return201_when_nameIsOneCharacter() throws Exception {
                         // Arrange — 1-char name is valid per @Size(min=1, max=255)
-                        BoatDto.Request request = new BoatDto.Request("A", null);
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("A").status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
                         BoatDto.Response response = BoatDto.Response.builder()
-                                        .id(1L).name("A").createdAt(Instant.now()).build();
+                                        .id(1L).name("A")
+                                        .status(BoatStatus.IN_PORT).type(BoatType.YACHT)
+                                        .createdAt(Instant.now()).build();
 
                         when(boatService.create(any())).thenReturn(response);
 
@@ -344,9 +421,12 @@ class BoatControllerTest {
                 void should_return201_when_nameIs255Characters() throws Exception {
                         // Arrange — 255-char name is valid per @Size(max=255)
                         String maxName = "A".repeat(255);
-                        BoatDto.Request request = new BoatDto.Request(maxName, null);
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name(maxName).status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
                         BoatDto.Response response = BoatDto.Response.builder()
-                                        .id(1L).name(maxName).createdAt(Instant.now()).build();
+                                        .id(1L).name(maxName)
+                                        .status(BoatStatus.IN_PORT).type(BoatType.YACHT)
+                                        .createdAt(Instant.now()).build();
 
                         when(boatService.create(any())).thenReturn(response);
 
@@ -362,7 +442,8 @@ class BoatControllerTest {
                 @DisplayName("should return 400 when name exceeds 255 characters")
                 void should_return400_when_nameExceedsMaxLength() throws Exception {
                         // Arrange — 256 chars violates @Size(max=255)
-                        BoatDto.Request request = new BoatDto.Request("A".repeat(256), null);
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("A".repeat(256)).status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
 
                         // Act & Assert
                         mockMvc.perform(post("/api/boats").with(jwt())
@@ -393,9 +474,12 @@ class BoatControllerTest {
                 @DisplayName("should return 403 when request is unauthenticated")
                 void should_return403_when_unauthenticated() throws Exception {
                         // Act & Assert
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("Boat").status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
+
                         mockMvc.perform(post("/api/boats")
                                         .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(new BoatDto.Request("Boat", null))))
+                                        .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isForbidden());
                 }
         }
@@ -413,9 +497,12 @@ class BoatControllerTest {
                 @DisplayName("should return 200 with updated boat when request is valid and boat exists")
                 void should_return200WithUpdatedBoat_when_requestIsValidAndBoatExists() throws Exception {
                         // Arrange
-                        BoatDto.Request request = new BoatDto.Request("Updated Name", "Updated description");
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("Updated Name").description("Updated description")
+                                        .status(BoatStatus.UNDERWAY).type(BoatType.CARGO_SHIP).build();
                         BoatDto.Response response = BoatDto.Response.builder()
                                         .id(1L).name("Updated Name").description("Updated description")
+                                        .status(BoatStatus.UNDERWAY).type(BoatType.CARGO_SHIP)
                                         .createdAt(Instant.now()).build();
 
                         when(boatService.update(eq(1L), any(BoatDto.Request.class))).thenReturn(response);
@@ -427,7 +514,9 @@ class BoatControllerTest {
                                         .andExpect(status().isOk())
                                         .andExpect(jsonPath("$.id").value(1))
                                         .andExpect(jsonPath("$.name").value("Updated Name"))
-                                        .andExpect(jsonPath("$.description").value("Updated description"));
+                                        .andExpect(jsonPath("$.description").value("Updated description"))
+                                        .andExpect(jsonPath("$.status").value("UNDERWAY"))
+                                        .andExpect(jsonPath("$.type").value("CARGO_SHIP"));
                 }
 
                 @Test
@@ -437,10 +526,14 @@ class BoatControllerTest {
                         // Arrange
                         when(boatService.update(eq(99L), any())).thenThrow(new BoatNotFoundException(99L));
 
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("Name").description("Desc")
+                                        .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
+
                         // Act & Assert
                         mockMvc.perform(put("/api/boats/99").with(jwt())
                                         .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(new BoatDto.Request("Name", "Desc"))))
+                                        .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isNotFound());
                 }
 
@@ -449,7 +542,9 @@ class BoatControllerTest {
                 @DisplayName("should return 400 when name is blank on update")
                 void should_return400_when_nameIsBlankOnUpdate() throws Exception {
                         // Arrange — same validation rules apply for update
-                        BoatDto.Request request = new BoatDto.Request("", "Description");
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("").description("Description")
+                                        .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
 
                         // Act & Assert
                         mockMvc.perform(put("/api/boats/1").with(jwt())
@@ -465,7 +560,9 @@ class BoatControllerTest {
                 @DisplayName("should return 400 when name is whitespace only on update")
                 void should_return400_when_nameIsWhitespaceOnUpdate() throws Exception {
                         // Arrange
-                        BoatDto.Request request = new BoatDto.Request("   ", "Description");
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("   ").description("Description")
+                                        .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
 
                         // Act & Assert
                         mockMvc.perform(put("/api/boats/1").with(jwt())
@@ -479,10 +576,14 @@ class BoatControllerTest {
                 @Test
                 @DisplayName("should return 403 when request is unauthenticated")
                 void should_return403_when_unauthenticated() throws Exception {
+                        BoatDto.Request request = BoatDto.Request.builder()
+                                        .name("Name").description("Desc")
+                                        .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
+
                         // Act & Assert
                         mockMvc.perform(put("/api/boats/1")
                                         .contentType(MediaType.APPLICATION_JSON)
-                                        .content(objectMapper.writeValueAsString(new BoatDto.Request("Name", "Desc"))))
+                                        .content(objectMapper.writeValueAsString(request)))
                                         .andExpect(status().isForbidden());
                 }
         }

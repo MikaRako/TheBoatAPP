@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { BoatService, Boat } from '../../shared/services/boat.service';
+import { BoatService, Boat, BoatStatus, BoatType } from '../../shared/services/boat.service';
 import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
 import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner.component';
 
@@ -43,13 +43,18 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 
         <!-- Hero card -->
         <div class="hero-card" [ngClass]="'hero-' + (boat.id % 4)">
-          <div class="hero-icon">
-            <mat-icon>directions_boat</mat-icon>
+          <div class="hero-watermark">
+            <mat-icon>{{ getTypeIcon(boat.type) }}</mat-icon>
           </div>
-          <div class="hero-info">
-            <span class="status-badge" [ngClass]="getStatusClass(boat.id)">
-              {{ getStatusLabel(boat.id) }}
-            </span>
+          <div class="hero-top">
+            <div class="hero-badges">
+              <span class="status-badge" [ngClass]="getStatusClass(boat.status)">
+                {{ getStatusLabel(boat.status) }}
+              </span>
+              <span class="type-badge">{{ getTypeLabel(boat.type) }}</span>
+            </div>
+          </div>
+          <div class="hero-bottom">
             <h1 class="hero-name">{{ boat.name }}</h1>
             <span class="hero-id">Vessel ID #{{ boat.id }}</span>
           </div>
@@ -57,33 +62,30 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
 
         <!-- Action bar -->
         <div class="action-bar">
-          <a class="btn-edit" [routerLink]="['/boats', boat.id, 'edit']">
-            <mat-icon>edit</mat-icon>
-            Edit Vessel
-          </a>
-          <button class="btn-delete" (click)="confirmDelete()">
-            <mat-icon>delete_outline</mat-icon>
-            Delete Vessel
-          </button>
+          <div class="action-date">
+            <mat-icon>schedule</mat-icon>
+            Added {{ boat.createdAt | date:'MMM d, y' }}&nbsp;&middot;&nbsp;{{ boat.createdAt | date:'h:mm a' }}
+          </div>
+          <div class="action-buttons">
+            <a class="btn-edit" [routerLink]="['/boats', boat.id, 'edit']">
+              <mat-icon>edit</mat-icon>
+              Edit Vessel
+            </a>
+            <button class="btn-delete" (click)="confirmDelete()">
+              <mat-icon>delete_outline</mat-icon>
+              Delete Vessel
+            </button>
+          </div>
         </div>
 
         <!-- Info cards -->
         <div class="info-grid">
-          <div class="info-card">
+          <div class="info-card info-card--full">
             <div class="info-label">
               <mat-icon>description</mat-icon>
               Description
             </div>
             <p class="info-value">{{ boat.description || 'No description provided.' }}</p>
-          </div>
-
-          <div class="info-card">
-            <div class="info-label">
-              <mat-icon>calendar_today</mat-icon>
-              Date Added
-            </div>
-            <p class="info-value">{{ boat.createdAt | date:'MMMM d, y' }}</p>
-            <p class="info-sub">{{ boat.createdAt | date:'h:mm a' }}</p>
           </div>
         </div>
 
@@ -155,53 +157,77 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
     /* Hero card */
     .hero-card {
       border-radius: var(--radius);
-      padding: 28px 28px 28px 24px;
+      padding: 20px 24px;
+      min-height: 220px;
       display: flex;
-      align-items: center;
-      gap: 24px;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
       box-shadow: var(--shadow-sm);
-      flex-wrap: wrap;
     }
     .hero-0 { background: linear-gradient(135deg, #1B3A6B 0%, #2A5298 100%); }
     .hero-1 { background: linear-gradient(135deg, #0D4F3C 0%, #16A34A 100%); }
     .hero-2 { background: linear-gradient(135deg, #44237A 0%, #7C3AED 100%); }
     .hero-3 { background: linear-gradient(135deg, #7A2D00 0%, #EA580C 100%); }
 
-    .hero-icon {
-      width: 72px;
-      height: 72px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.15);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
+    .hero-watermark {
+      position: absolute;
+      right: -16px;
+      bottom: -16px;
+      opacity: 0.12;
+      pointer-events: none;
     }
-    .hero-icon mat-icon {
-      font-size: 36px;
-      width: 36px;
-      height: 36px;
+    .hero-watermark mat-icon {
+      font-size: 180px;
+      width: 180px;
+      height: 180px;
       color: white;
     }
 
-    .hero-info {
-      flex: 1;
+    .hero-top {
+      display: flex;
+      align-items: flex-start;
+    }
+    .hero-badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .hero-bottom {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      min-width: 0;
+      gap: 2px;
+      z-index: 1;
     }
     .hero-name {
-      font-size: 1.6rem;
+      font-size: 1.7rem;
       font-weight: 700;
       color: white;
       line-height: 1.2;
       word-break: break-word;
       overflow-wrap: break-word;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.25);
     }
     .hero-id {
-      font-size: 0.8rem;
-      color: rgba(255,255,255,0.65);
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.3px;
+    }
+
+    /* Type badge */
+    .type-badge {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.2);
+      color: white;
     }
 
     /* Status badge */
@@ -222,8 +248,27 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
     /* Action bar */
     .action-bar {
       display: flex;
+      align-items: center;
+      justify-content: space-between;
       gap: 12px;
-      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .action-date {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.8rem;
+      color: var(--color-text-secondary);
+      font-weight: 500;
+    }
+    .action-date mat-icon {
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 12px;
     }
     .btn-edit {
       display: flex;
@@ -282,6 +327,9 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       flex-direction: column;
       gap: 8px;
     }
+    .info-card--full {
+      grid-column: 1 / -1;
+    }
     .info-label {
       display: flex;
       align-items: center;
@@ -304,10 +352,6 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       word-break: break-word;
       overflow-wrap: break-word;
       white-space: pre-wrap;
-    }
-    .info-sub {
-      font-size: 0.8rem;
-      color: var(--color-text-muted);
     }
   `]
 })
@@ -336,18 +380,40 @@ export class BoatDetailComponent implements OnInit, OnDestroy {
     window.addEventListener('auth:token_received', this.authListener);
   }
 
-  getStatusLabel(id: number): string {
-    const idx = id % 3;
-    if (idx === 0) return 'ACTIVE';
-    if (idx === 1) return 'MAINTENANCE';
-    return 'IN PORT';
+  getStatusLabel(status: BoatStatus): string {
+    switch (status) {
+      case 'UNDERWAY':    return 'UNDERWAY';
+      case 'IN_PORT':     return 'IN PORT';
+      case 'MAINTENANCE': return 'MAINTENANCE';
+    }
   }
 
-  getStatusClass(id: number): string {
-    const idx = id % 3;
-    if (idx === 0) return 'badge-active';
-    if (idx === 1) return 'badge-maintenance';
-    return 'badge-port';
+  getStatusClass(status: BoatStatus): string {
+    switch (status) {
+      case 'UNDERWAY':    return 'badge-active';
+      case 'IN_PORT':     return 'badge-port';
+      case 'MAINTENANCE': return 'badge-maintenance';
+    }
+  }
+
+  getTypeLabel(type: BoatType): string {
+    switch (type) {
+      case 'SAILBOAT':  return 'Sailboat';
+      case 'TRAWLER':   return 'Trawler';
+      case 'CARGO_SHIP': return 'Cargo Ship';
+      case 'YACHT':     return 'Yacht';
+      case 'FERRY':     return 'Ferry';
+    }
+  }
+
+  getTypeIcon(type: BoatType): string {
+    switch (type) {
+      case 'SAILBOAT':  return 'sailing';
+      case 'TRAWLER':   return 'phishing';
+      case 'CARGO_SHIP': return 'local_shipping';
+      case 'YACHT':     return 'directions_boat';
+      case 'FERRY':     return 'directions_ferry';
+    }
   }
 
   private loadBoat(id: number): void {

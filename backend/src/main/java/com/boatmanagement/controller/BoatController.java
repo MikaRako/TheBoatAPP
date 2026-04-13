@@ -1,6 +1,8 @@
 package com.boatmanagement.controller;
 
 import com.boatmanagement.dto.BoatDto;
+import com.boatmanagement.entity.BoatStatus;
+import com.boatmanagement.entity.BoatType;
 import com.boatmanagement.service.BoatService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,6 +44,10 @@ public class BoatController {
     public ResponseEntity<BoatDto.PageResponse> getAllBoats(
             @Parameter(description = "Search term for name or description")
             @RequestParam(required = false, defaultValue = "") String search,
+            @Parameter(description = "Filter by status (UNDERWAY, IN_PORT, MAINTENANCE)")
+            @RequestParam(required = false) BoatStatus status,
+            @Parameter(description = "Filter by type (SAILBOAT, TRAWLER, CARGO_SHIP, YACHT, FERRY)")
+            @RequestParam(required = false) BoatType type,
             @Parameter(description = "Page number (0-indexed)")
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size")
@@ -51,7 +57,7 @@ public class BoatController {
             @Parameter(description = "Sort direction (asc/desc)")
             @RequestParam(defaultValue = "desc") String sortDir) {
 
-        return ResponseEntity.ok(boatService.findAll(search, page, size, sortBy, sortDir));
+        return ResponseEntity.ok(boatService.findAll(search, status, type, page, size, sortBy, sortDir));
     }
 
     @GetMapping("/{id}")
