@@ -3,16 +3,19 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideRouter, Router } from '@angular/router';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { AuthService } from '../services/auth.service';
 import { authInterceptor } from './auth.interceptor';
 
 describe('authInterceptor', () => {
   let http: HttpClient;
   let httpMock: HttpTestingController;
   let oauthSpy: jasmine.SpyObj<OAuthService>;
+  let authSpy: jasmine.SpyObj<AuthService>;
   let router: Router;
 
   beforeEach(() => {
     oauthSpy = jasmine.createSpyObj('OAuthService', ['getAccessToken']);
+    authSpy  = jasmine.createSpyObj('AuthService', ['login']);
 
     TestBed.configureTestingModule({
       providers: [
@@ -20,6 +23,7 @@ describe('authInterceptor', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: OAuthService, useValue: oauthSpy },
+        { provide: AuthService,  useValue: authSpy  },
       ],
     });
 
@@ -59,6 +63,17 @@ describe('authInterceptor', () => {
     const req = httpMock.expectOne('http://localhost:8080/realms/boat-realm/token');
     expect(req.request.headers.has('Authorization')).toBeFalse();
     req.flush({});
+  });
+
+  it('should call authService.login() on a 401 response', () => {
+    oauthSpy.getAccessToken.and.returnValue(null as any);
+
+    http.get('/api/boats').subscribe({ error: () => {} });
+
+    const req = httpMock.expectOne('/api/boats');
+    req.flush('Unauthorized', { status: 401, statusText: 'Unauthorized' });
+
+    expect(authSpy.login).toHaveBeenCalled();
   });
 
   it('should navigate to /boats on a 403 response', () => {

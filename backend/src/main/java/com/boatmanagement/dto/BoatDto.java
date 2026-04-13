@@ -1,8 +1,11 @@
 package com.boatmanagement.dto;
 
+import com.boatmanagement.entity.BoatStatus;
+import com.boatmanagement.entity.BoatType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 
@@ -26,6 +29,12 @@ public class BoatDto {
         @Schema(description = "Boat description", example = "A luxury sailing boat")
         private String description;
 
+        @Schema(description = "Boat status", example = "IN_PORT")
+        private BoatStatus status;
+
+        @Schema(description = "Boat type", example = "YACHT")
+        private BoatType type;
+
         @Schema(description = "Creation timestamp")
         @JsonFormat(shape = JsonFormat.Shape.STRING)
         private Instant createdAt;
@@ -46,6 +55,14 @@ public class BoatDto {
         @Schema(description = "Boat description", example = "A luxury sailing boat")
         @Size(max = 2000, message = "Description must not exceed 2000 characters")
         private String description;
+
+        @Schema(description = "Boat status", example = "IN_PORT")
+        @NotNull(message = "Status is required")
+        private BoatStatus status;
+
+        @Schema(description = "Boat type", example = "YACHT")
+        @NotNull(message = "Type is required")
+        private BoatType type;
     }
 
     @Schema(description = "Paginated boats response")

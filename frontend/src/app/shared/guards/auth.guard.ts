@@ -1,12 +1,12 @@
 import { CanActivateFn } from '@angular/router';
 import { inject } from '@angular/core';
 import { OAuthService } from 'angular-oauth2-oidc';
+import { AuthService } from '../services/auth.service';
 
-// This guard ONLY gates access — it never initiates a new auth flow.
-// Auth redirection is handled exclusively in AuthService.initAuth(),
-// which runs inside provideAppInitializer (blocking navigation) and
-// calls initCodeFlow() at most once per page load.
-// Calling initCodeFlow() here would restart the loop on every guard check.
-export const authGuard: CanActivateFn = () => {
-  return inject(OAuthService).hasValidAccessToken();
+export const authGuard: CanActivateFn = (_route, state) => {
+  if (inject(OAuthService).hasValidAccessToken()) {
+    return true;
+  }
+  inject(AuthService).login(state.url); // redirects to Keycloak, preserving return URL
+  return false;
 };

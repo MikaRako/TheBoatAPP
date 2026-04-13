@@ -8,9 +8,13 @@ spring:
     password: ${DB_PASSWORD:boatpassword}
     driver-class-name: org.postgresql.Driver
 
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 1
+
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
     properties:
       hibernate:

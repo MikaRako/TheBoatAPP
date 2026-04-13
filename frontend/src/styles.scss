@@ -1,18 +1,39 @@
 @use '@angular/material' as mat;
 
 :root {
-  --color-primary: #0f4c81;
-  --color-primary-light: #1a6cb0;
-  --color-accent: #00b4d8;
-  --color-warn: #e63946;
+  // Brand colors
+  --color-primary: #0d1936;
+  --color-primary-dark: #060c18;
+  --color-primary-light: #1a3a6b;
+  --color-accent: #22C55E;
+  --color-warn: #EF4444;
+
+  // Status colors
+  --color-status-active: #16A34A;
+  --color-status-active-bg: #DCFCE7;
+  --color-status-maintenance: #D97706;
+  --color-status-maintenance-bg: #FEF3C7;
+  --color-status-port: #2a5298;
+  --color-status-port-bg: #dce6f5;
+
+  // Surface / neutral
   --color-surface: #ffffff;
-  --color-background: #f0f4f8;
-  --color-text: #1a202c;
-  --color-text-secondary: #4a5568;
-  --color-border: #e2e8f0;
-  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-  --shadow-md: 0 4px 16px rgba(0,0,0,0.10);
-  --shadow-lg: 0 8px 32px rgba(0,0,0,0.13);
+  --color-background: #F8FAFC;
+  --color-sidebar: #0D1B2A;
+  --color-sidebar-hover: rgba(255, 255, 255, 0.07);
+  --color-sidebar-active: rgba(255, 255, 255, 0.13);
+  --color-text: #1A202C;
+  --color-text-secondary: #64748B;
+  --color-text-muted: #94A3B8;
+  --color-border: #E2E8F0;
+
+  // Shadows
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.07);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.09);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.13);
+
+  // Layout
+  --sidebar-width: 240px;
   --radius: 12px;
   --font-main: 'Outfit', sans-serif;
   --font-mono: 'Space Mono', monospace;
@@ -31,39 +52,40 @@ html, body {
   color: var(--color-text);
 }
 
-.page-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px 16px;
-}
-
 .card {
   background: var(--color-surface);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   padding: 24px;
 }
 
 .mat-mdc-card {
   border-radius: var(--radius) !important;
-  box-shadow: var(--shadow-md) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 .mat-mdc-raised-button.mat-primary {
   background-color: var(--color-primary) !important;
 }
 
-// Smooth table rows
-.mat-mdc-row:hover {
-  background-color: rgba(0, 180, 216, 0.05) !important;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
+// Dialog overlay
+.cdk-overlay-dark-backdrop {
+  background: rgba(4, 8, 18, 0.72);
 }
 
 // Snackbar
 .success-snackbar {
-  --mdc-snackbar-container-color: #2d6a4f;
+  --mdc-snackbar-container-color: #16A34A;
 }
 .error-snackbar {
-  --mdc-snackbar-container-color: #c1121f;
+  --mdc-snackbar-container-color: #DC2626;
+}
+
+// Paginator responsive overrides (replaces ::ng-deep in BoatListComponent)
+@media (max-width: 767px) {
+  .pagination-bar {
+    .mat-mdc-paginator-page-size { display: none; }
+    .mat-mdc-paginator-range-label { font-size: 0.75rem; margin: 0 4px; }
+    .mat-mdc-icon-button { width: 32px; height: 32px; padding: 4px; }
+  }
 }

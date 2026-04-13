@@ -28,6 +28,16 @@ public class Boat {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BoatStatus status = BoatStatus.IN_PORT;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BoatType type = BoatType.YACHT;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
