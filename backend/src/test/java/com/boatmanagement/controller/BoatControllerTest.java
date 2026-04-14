@@ -4,6 +4,7 @@ import com.boatmanagement.dto.BoatDto;
 import com.boatmanagement.entity.BoatStatus;
 import com.boatmanagement.entity.BoatType;
 import com.boatmanagement.exception.BoatNotFoundException;
+import com.boatmanagement.service.AuditLogService;
 import com.boatmanagement.service.BoatService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -25,7 +26,6 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -74,6 +74,11 @@ class BoatControllerTest {
         // Prevents Spring Boot from trying to fetch the JWKS from Keycloak at startup
         @MockBean
         private JwtDecoder jwtDecoder;
+
+        // GlobalExceptionHandler injects AuditLogService via @RequiredArgsConstructor;
+        // it must be mocked so the web context can start.
+        @MockBean
+        private AuditLogService auditLogService;
 
         // ---------------------------------------------------------------------------
         // GET /api/boats
@@ -159,10 +164,39 @@ class BoatControllerTest {
 
                 @Test
                 @WithMockUser(username = "testuser")
+                @DisplayName("should return 400 with 'Invalid Parameter' when status value is not a valid enum")
+                void should_return400WithInvalidParameter_when_statusIsInvalidEnum() throws Exception {
+                        mockMvc.perform(get("/api/boats").with(jwt())
+                                        .param("status", "FLYING"))
+                                        .andExpect(status().isBadRequest())
+                                        .andExpect(jsonPath("$.title").value("Invalid Parameter"))
+                                        .andExpect(jsonPath("$.parameter").value("status"))
+                                        .andExpect(jsonPath("$.rejectedValue").value("FLYING"));
+
+                        verifyNoInteractions(boatService);
+                }
+
+                @Test
+                @WithMockUser(username = "testuser")
+                @DisplayName("should return 400 with 'Invalid Parameter' when type value is not a valid enum")
+                void should_return400WithInvalidParameter_when_typeIsInvalidEnum() throws Exception {
+                        mockMvc.perform(get("/api/boats").with(jwt())
+                                        .param("type", "SUBMARINE"))
+                                        .andExpect(status().isBadRequest())
+                                        .andExpect(jsonPath("$.title").value("Invalid Parameter"))
+                                        .andExpect(jsonPath("$.parameter").value("type"))
+                                        .andExpect(jsonPath("$.rejectedValue").value("SUBMARINE"));
+
+                        verifyNoInteractions(boatService);
+                }
+
+                @Test
+                @WithMockUser(username = "testuser")
                 @DisplayName("should forward status and type filter params to the service")
                 void should_forwardStatusAndTypeFiltersToService_when_paramsAreProvided() throws Exception {
                         // Arrange
-                        when(boatService.findAll("", BoatStatus.UNDERWAY, BoatType.SAILBOAT, 0, 10, "createdAt", "desc"))
+                        when(boatService.findAll("", BoatStatus.UNDERWAY, BoatType.SAILBOAT, 0, 10, "createdAt",
+                                        "desc"))
                                         .thenReturn(BoatDto.PageResponse.builder()
                                                         .content(List.of()).page(0).size(10).totalElements(0)
                                                         .totalPages(0).last(true).build());
@@ -173,8 +207,10 @@ class BoatControllerTest {
                                         .param("type", "SAILBOAT"))
                                         .andExpect(status().isOk());
 
-                        // Assert — status and type are correctly converted from String to enum by Spring MVC
-                        verify(boatService).findAll("", BoatStatus.UNDERWAY, BoatType.SAILBOAT, 0, 10, "createdAt", "desc");
+                        // Assert — status and type are correctly converted from String to enum by
+                        // Spring MVC
+                        verify(boatService).findAll("", BoatStatus.UNDERWAY, BoatType.SAILBOAT, 0, 10, "createdAt",
+                                        "desc");
                 }
         }
 
@@ -473,7 +509,8 @@ class BoatControllerTest {
                 @Test
                 @DisplayName("should return 403 when request is unauthenticated")
                 void should_return403_when_unauthenticated() throws Exception {
-                        // Act & Assert
+                        // Note: @WebMvcTest with @MockBean JwtDecoder does not configure a bearer
+                        // challenge, so Spring Security returns 403 (not 401) for missing tokens.
                         BoatDto.Request request = BoatDto.Request.builder()
                                         .name("Boat").status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
 
@@ -580,7 +617,8 @@ class BoatControllerTest {
                                         .name("Name").description("Desc")
                                         .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
 
-                        // Act & Assert
+                        // Note: @WebMvcTest with @MockBean JwtDecoder does not configure a bearer
+                        // challenge, so Spring Security returns 403 (not 401) for missing tokens.
                         mockMvc.perform(put("/api/boats/1")
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content(objectMapper.writeValueAsString(request)))
@@ -628,7 +666,8 @@ class BoatControllerTest {
                 @Test
                 @DisplayName("should return 403 when request is unauthenticated")
                 void should_return403_when_unauthenticated() throws Exception {
-                        // Act & Assert
+                        // Note: @WebMvcTest with @MockBean JwtDecoder does not configure a bearer
+                        // challenge, so Spring Security returns 403 (not 401) for missing tokens.
                         mockMvc.perform(delete("/api/boats/1"))
                                         .andExpect(status().isForbidden());
 

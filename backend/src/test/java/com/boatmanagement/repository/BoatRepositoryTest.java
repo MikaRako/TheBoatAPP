@@ -3,6 +3,7 @@ package com.boatmanagement.repository;
 import com.boatmanagement.entity.Boat;
 import com.boatmanagement.entity.BoatStatus;
 import com.boatmanagement.entity.BoatType;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -48,7 +49,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class BoatRepositoryTest {
 
     @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
+    static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
             .withDatabaseName("testdb")
             .withUsername("testuser")
             .withPassword("testpassword");
@@ -58,6 +59,13 @@ class BoatRepositoryTest {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
+    @AfterAll
+    static void closePostgresContainer() {
+        if (postgres != null) {
+            postgres.close();
+        }
     }
 
     @Autowired

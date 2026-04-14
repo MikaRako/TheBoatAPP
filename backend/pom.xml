@@ -91,6 +91,21 @@
             <version>${springdoc.version}</version>
         </dependency>
 
+        <!-- AOP for audit logging -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
+        <!-- Suppresses "unknown enum constant javax.annotation.meta.When.MAYBE" compiler
+             warnings emitted by Lombok's annotation processor when JSR-305 is absent. -->
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+            <version>3.0.2</version>
+            <optional>true</optional>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

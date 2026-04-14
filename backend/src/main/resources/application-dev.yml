@@ -1,0 +1,18 @@
+# Development profile — localhost defaults for all external service URLs.
+# This file is loaded when SPRING_PROFILES_ACTIVE=dev (set automatically by docker-compose for local dev).
+# Never use these values in staging or production — set the env vars explicitly instead.
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/boat-realm
+          jwk-set-uri: http://localhost:8080/realms/boat-realm/protocol/openid-connect/certs
+
+springdoc:
+  swagger-ui:
+    oauth2-redirect-url: http://localhost:8081/swagger-ui/oauth2-redirect.html
+  oAuthFlow:
+    authorizationUrl: http://localhost:8080/realms/boat-realm/protocol/openid-connect/auth
+    tokenUrl: http://localhost:8080/realms/boat-realm/protocol/openid-connect/token

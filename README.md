@@ -12,26 +12,42 @@ boat-management/
 │   ├── src/
 │   │   ├── main/java/com/boatmanagement/
 │   │   │   ├── BoatManagementApplication.java
+│   │   │   ├── audit/              # Cross-cutting AOP concerns
+│   │   │   │   ├── Auditable.java         # @Auditable annotation
+│   │   │   │   ├── AuditAspect.java       # AOP advice (intercepts @Auditable)
+│   │   │   │   └── AuditContext.java      # Reads username/IP/UA from request context
 │   │   │   ├── config/
+│   │   │   │   ├── AsyncConfig.java       # Dedicated thread pool for audit writes
 │   │   │   │   ├── SecurityConfig.java
-│   │   │   │   └── OpenApiConfig.java
+│   │   │   │   ├── OpenApiConfig.java
+│   │   │   │   └── UserMdcFilter.java
 │   │   │   ├── controller/
-│   │   │   │   └── BoatController.java
+│   │   │   │   ├── BoatController.java
+│   │   │   │   └── AuditLogController.java  # Admin-only read API
 │   │   │   ├── service/
-│   │   │   │   └── BoatService.java
+│   │   │   │   ├── BoatService.java
+│   │   │   │   └── AuditLogService.java     # Async audit persistence
 │   │   │   ├── repository/
-│   │   │   │   └── BoatRepository.java
+│   │   │   │   ├── BoatRepository.java
+│   │   │   │   └── AuditLogRepository.java
 │   │   │   ├── entity/
-│   │   │   │   └── Boat.java
+│   │   │   │   ├── Boat.java
+│   │   │   │   ├── AuditLog.java            # Immutable audit record entity
+│   │   │   │   └── AuditAction.java         # Enum: BOAT_CREATE, BOAT_READ, …
 │   │   │   ├── dto/
-│   │   │   │   └── BoatDto.java
+│   │   │   │   ├── BoatDto.java
+│   │   │   │   └── AuditLogDto.java
 │   │   │   ├── mapper/
 │   │   │   │   └── BoatMapper.java
 │   │   │   └── exception/
 │   │   │       ├── BoatNotFoundException.java
 │   │   │       └── GlobalExceptionHandler.java
 │   │   └── main/resources/
-│   │       └── application.yml
+│   │       ├── application.yml
+│   │       └── db/migration/
+│   │           ├── V1__init.sql
+│   │           ├── V2__...sql
+│   │           └── V3__add_audit_log.sql
 │   ├── Dockerfile
 │   └── pom.xml
 │
@@ -130,9 +146,9 @@ No passwords are hardcoded in the repository.
 Credentials are set via `.env` (see `.env.example` for variable names):
 
 | Username   | `.env` variable          | Roles                 |
-|-----------|---------------------------|-----------------------|
-| boatuser  | `KC_BOATUSER_PASSWORD`   | ROLE_USER             |
-| boatadmin | `KC_BOATADMIN_PASSWORD`  | ROLE_USER, ROLE_ADMIN |
+|------------|--------------------------|-----------------------|
+| boatuser   | `KC_BOATUSER_PASSWORD`   | ROLE_USER             |
+| boatadmin  | `KC_BOATADMIN_PASSWORD`  | ROLE_USER, ROLE_ADMIN |
 
 > To change passwords: update `.env`, then run `docker compose down -v && docker compose up` to wipe and reimport the realm.
 
@@ -236,6 +252,18 @@ curl -X DELETE "http://localhost:8081/api/boats/1" \
   -H "Authorization: Bearer <token>"
 ```
 
+#### Search audit logs (ROLE_ADMIN only)
+```bash
+curl -X GET "http://localhost:8081/api/audit-logs?action=BOAT_CREATE&outcome=SUCCESS&page=0&size=20" \
+  -H "Authorization: Bearer <admin-token>"
+```
+
+#### Get a single audit log entry (ROLE_ADMIN only)
+```bash
+curl -X GET "http://localhost:8081/api/audit-logs/42" \
+  -H "Authorization: Bearer <admin-token>"
+```
+
 ### Get a token for testing
 ```bash
 curl -X POST "http://localhost:8080/realms/boat-realm/protocol/openid-connect/token" \
@@ -317,18 +345,18 @@ The frontend fully supports **dark mode** and meets **WCAG 2.2 AA** accessibilit
 
 ### Accessibility
 
-| Criterion | Rule | Status |
-|---|---|---|
-| 1.4.3 | Text contrast ≥ 4.5:1 (normal), 3:1 (large/bold text) | All pairs audited and documented inline |
-| 1.4.11 | UI component contrast ≥ 3:1 | Buttons, borders, badges tuned |
-| 2.1.1 | Full keyboard operability | `tabindex`, `keydown.enter/space` on cards, focus rings |
-| 2.3.3 | Respect reduced motion | `prefers-reduced-motion` collapses all animations |
-| 2.4.1 | Skip navigation link | Skip-to-content link at top of every page |
-| 2.4.7 | Focus visible | `:focus-visible` with 3px ring on all interactive elements |
-| **2.4.11** | **Focus not obscured by sticky nav** *(new in 2.2)* | `scroll-margin-top: 68px` on all focusable elements |
-| **2.5.3** | **Minimum target size 24×24px** *(new in 2.2)* | All controls ≥ 24px; enforced via global CSS rule |
-| 4.1.2 | Name, role, value on all controls | `aria-label`, `aria-pressed`, `aria-expanded`, `role="menu"` etc. |
-| 4.1.3 | Status messages | `role="alert"` on errors, `aria-live="polite"` on spinner |
+| Criterion  | Rule                                                  | Status 
+|------------|-------------------------------------------------------|----------------------------------------------------------------------
+| 1.4.3      | Text contrast ≥ 4.5:1 (normal), 3:1 (large/bold text) | All pairs audited and documented inline 
+| 1.4.11     | UI component contrast ≥ 3:1                           | Buttons, borders, badges tuned 
+| 2.1.1      | Full keyboard operability                             | `tabindex`, `keydown.enter/space` on cards, focus rings 
+| 2.3.3      | Respect reduced motion                                | `prefers-reduced-motion` collapses all animations 
+| 2.4.1      | Skip navigation link                                  | Skip-to-content link at top of every page 
+| 2.4.7      | Focus visible                                         | `:focus-visible` with 3px ring on all interactive elements 
+| **2.4.11** | **Focus not obscured by sticky nav** *(new in 2.2)*   | `scroll-margin-top: 68px` on all focusable elements 
+| **2.5.3**  | **Minimum target size 24×24px** *(new in 2.2)*        | All controls ≥ 24px; enforced via global CSS rule 
+| 4.1.2      | Name, role, value on all controls                     | `aria-label`, `aria-pressed`, `aria-expanded`, `role="menu"` etc. 
+| 4.1.3      | Status messages                                       | `role="alert"` on errors, `aria-live="polite"` on spinner 
 
 > WCAG 2.2 is backwards-compatible with 2.1 — all 2.1 criteria are still satisfied.
 
@@ -336,14 +364,17 @@ The frontend fully supports **dark mode** and meets **WCAG 2.2 AA** accessibilit
 
 ## 🏗 Architecture Decisions
 
-| Decision              | Choice                          | Reason                              |
-|----------------------|---------------------------------|-------------------------------------|
-| Auth protocol        | OIDC / OAuth2 Authorization Code + PKCE | Industry standard, secure for SPAs |
-| JWT validation       | Spring OAuth2 Resource Server   | Auto-validates against Keycloak JWKS |
-| ORM                  | Spring Data JPA + Hibernate     | Reduces boilerplate, clean queries  |
-| DTO mapping          | MapStruct                       | Type-safe, compile-time, zero-overhead |
-| Frontend state       | RxJS + Services                 | Lightweight, no NgRx complexity needed |
-| Error format         | RFC 9457 ProblemDetail          | Standardized HTTP problem responses |
+| Decision             | Choice                                                   | Reason                              
+|----------------------|----------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------
+| Auth protocol        | OIDC / OAuth2 Authorization Code + PKCE                  | Industry standard, secure for SPAs 
+| JWT validation       | Spring OAuth2 Resource Server                            | Auto-validates against Keycloak JWKS 
+| ORM                  | Spring Data JPA + Hibernate                              | Reduces boilerplate, clean queries  
+| DTO mapping          | MapStruct                                                | Type-safe, compile-time, zero-overhead 
+| Frontend state       | RxJS + Services                                          | Lightweight, no NgRx complexity needed 
+| Error format         | RFC 9457 ProblemDetail                                   | Standardized HTTP problem responses 
+| Package structure    | Layer-based (controller/service/repository/entity/dto)   | Consistent with existing conventions; audit cross-cutting concerns isolated in `audit/` 
+| Audit persistence    | AOP (`@Auditable`) + async thread pool (`auditExecutor`) | Zero latency impact on API responses; FAILURE records committed even when business tx rolls back (`REQUIRES_NEW`) 
+| Audit storage        | JSONB `metadata` column                                  | Flexible per-action context without schema changes 
 
 ---
 
@@ -351,7 +382,7 @@ The frontend fully supports **dark mode** and meets **WCAG 2.2 AA** accessibilit
 
 All variables are set in `.env` (copy from `.env.example`). The `.env` file is gitignored and never committed.
 
-| Variable                   | Description                                          |
+| Variable                  | Description                                          |
 |---------------------------|------------------------------------------------------|
 | `DB_NAME`                 | PostgreSQL database name                             |
 | `DB_USER`                 | PostgreSQL username                                  |

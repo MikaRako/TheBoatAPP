@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.junit.jupiter.api.AfterAll;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -29,175 +30,205 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @EnabledIfDockerAvailable
 class BoatIntegrationTest {
 
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
-            .withDatabaseName("testdb")
-            .withUsername("testuser")
-            .withPassword("testpassword");
+        @Container
+        static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15-alpine")
+                        .withDatabaseName("testdb")
+                        .withUsername("testuser")
+                        .withPassword("testpassword");
 
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
-        registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri",
-                () -> "http://localhost:8080/realms/boat-realm");
-    }
+        @DynamicPropertySource
+        static void configureProperties(DynamicPropertyRegistry registry) {
+                registry.add("spring.datasource.url", postgres::getJdbcUrl);
+                registry.add("spring.datasource.username", postgres::getUsername);
+                registry.add("spring.datasource.password", postgres::getPassword);
+                registry.add("spring.security.oauth2.resourceserver.jwt.issuer-uri",
+                                () -> "http://localhost:8080/realms/boat-realm");
+        }
 
-    @Autowired
-    private MockMvc mockMvc;
+        @AfterAll
+        static void closePostgresContainer() {
+                if (postgres != null) {
+                        postgres.close();
+                }
+        }
 
-    @Autowired
-    private ObjectMapper objectMapper;
+        @Autowired
+        private MockMvc mockMvc;
 
-    @Autowired
-    private BoatRepository boatRepository;
+        @Autowired
+        private ObjectMapper objectMapper;
 
-    @BeforeEach
-    void setUp() {
-        boatRepository.deleteAll();
-    }
+        @Autowired
+        private BoatRepository boatRepository;
 
-    @Test
-    @WithMockUser(username = "testuser")
-    void shouldCreateAndRetrieveBoat() throws Exception {
-        // Create boat
-        BoatDto.Request request = BoatDto.Request.builder()
-                .name("Test Boat").description("A test boat")
-                .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
+        @BeforeEach
+        void setUp() {
+                boatRepository.deleteAll();
+        }
 
-        String responseBody = mockMvc.perform(post("/api/boats")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.name").value("Test Boat"))
-                .andExpect(jsonPath("$.description").value("A test boat"))
-                .andExpect(jsonPath("$.status").value("IN_PORT"))
-                .andExpect(jsonPath("$.type").value("YACHT"))
-                .andReturn().getResponse().getContentAsString();
+        @Test
+        @WithMockUser(username = "testuser")
+        void shouldCreateAndRetrieveBoat() throws Exception {
+                // Create boat
+                BoatDto.Request request = BoatDto.Request.builder()
+                                .name("Test Boat").description("A test boat")
+                                .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
 
-        BoatDto.Response created = objectMapper.readValue(responseBody, BoatDto.Response.class);
+                String responseBody = mockMvc.perform(post("/api/boats")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isCreated())
+                                .andExpect(jsonPath("$.name").value("Test Boat"))
+                                .andExpect(jsonPath("$.description").value("A test boat"))
+                                .andExpect(jsonPath("$.status").value("IN_PORT"))
+                                .andExpect(jsonPath("$.type").value("YACHT"))
+                                .andReturn().getResponse().getContentAsString();
 
-        // Retrieve boat
-        mockMvc.perform(get("/api/boats/" + created.getId()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(created.getId()))
-                .andExpect(jsonPath("$.name").value("Test Boat"))
-                .andExpect(jsonPath("$.status").value("IN_PORT"))
-                .andExpect(jsonPath("$.type").value("YACHT"));
-    }
+                BoatDto.Response created = objectMapper.readValue(responseBody, BoatDto.Response.class);
 
-    @Test
-    @WithMockUser(username = "testuser")
-    void shouldReturnValidationErrorWhenNameIsBlank() throws Exception {
-        BoatDto.Request request = BoatDto.Request.builder()
-                .name("").description("A test boat")
-                .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
+                // Retrieve boat
+                mockMvc.perform(get("/api/boats/" + created.getId()))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.id").value(created.getId()))
+                                .andExpect(jsonPath("$.name").value("Test Boat"))
+                                .andExpect(jsonPath("$.status").value("IN_PORT"))
+                                .andExpect(jsonPath("$.type").value("YACHT"));
+        }
 
-        mockMvc.perform(post("/api/boats")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
+        @Test
+        @WithMockUser(username = "testuser")
+        void shouldReturnValidationErrorWhenNameIsBlank() throws Exception {
+                BoatDto.Request request = BoatDto.Request.builder()
+                                .name("").description("A test boat")
+                                .status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
 
-    @Test
-    @WithMockUser(username = "testuser")
-    void shouldReturnValidationErrorWhenStatusIsAbsent() throws Exception {
-        // status is @NotNull — missing it must produce 400
-        String requestJson = "{\"name\": \"My Boat\", \"type\": \"YACHT\"}";
+                mockMvc.perform(post("/api/boats")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isBadRequest());
+        }
 
-        mockMvc.perform(post("/api/boats")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson))
-                .andExpect(status().isBadRequest());
-    }
+        @Test
+        @WithMockUser(username = "testuser")
+        void shouldReturnValidationErrorWhenStatusIsAbsent() throws Exception {
+                // status is @NotNull — missing it must produce 400
+                String requestJson = "{\"name\": \"My Boat\", \"type\": \"YACHT\"}";
 
-    @Test
-    @WithMockUser(username = "testuser")
-    void shouldReturnValidationErrorWhenTypeIsAbsent() throws Exception {
-        // type is @NotNull — missing it must produce 400
-        String requestJson = "{\"name\": \"My Boat\", \"status\": \"IN_PORT\"}";
+                mockMvc.perform(post("/api/boats")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestJson))
+                                .andExpect(status().isBadRequest());
+        }
 
-        mockMvc.perform(post("/api/boats")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson))
-                .andExpect(status().isBadRequest());
-    }
+        @Test
+        @WithMockUser(username = "testuser")
+        void shouldReturnValidationErrorWhenTypeIsAbsent() throws Exception {
+                // type is @NotNull — missing it must produce 400
+                String requestJson = "{\"name\": \"My Boat\", \"status\": \"IN_PORT\"}";
 
-    @Test
-    @WithMockUser(username = "testuser")
-    void shouldReturn404WhenBoatNotFound() throws Exception {
-        mockMvc.perform(get("/api/boats/999999"))
-                .andExpect(status().isNotFound());
-    }
+                mockMvc.perform(post("/api/boats")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(requestJson))
+                                .andExpect(status().isBadRequest());
+        }
 
-    @Test
-    void shouldReturn401WhenNotAuthenticated() throws Exception {
-        mockMvc.perform(get("/api/boats"))
-                .andExpect(status().isUnauthorized());
-    }
+        @Test
+        @WithMockUser(username = "testuser")
+        void shouldReturn404WhenBoatNotFound() throws Exception {
+                mockMvc.perform(get("/api/boats/999999"))
+                                .andExpect(status().isNotFound());
+        }
 
-    @Test
-    @WithMockUser(username = "testuser")
-    void shouldDeleteBoat() throws Exception {
-        BoatDto.Request request = BoatDto.Request.builder()
-                .name("Delete Me").description("To be deleted")
-                .status(BoatStatus.MAINTENANCE).type(BoatType.TRAWLER).build();
+        @Test
+        void shouldReturn401WhenNotAuthenticated() throws Exception {
+                mockMvc.perform(get("/api/boats"))
+                                .andExpect(status().isUnauthorized());
+        }
 
-        String responseBody = mockMvc.perform(post("/api/boats")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andReturn().getResponse().getContentAsString();
+        @Test
+        @WithMockUser(username = "testuser")
+        void shouldReturn400WithInvalidParameterWhenStatusEnumIsInvalid() throws Exception {
+                mockMvc.perform(get("/api/boats")
+                                .param("status", "FLYING"))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.title").value("Invalid Parameter"))
+                                .andExpect(jsonPath("$.parameter").value("status"))
+                                .andExpect(jsonPath("$.rejectedValue").value("FLYING"));
+        }
 
-        BoatDto.Response created = objectMapper.readValue(responseBody, BoatDto.Response.class);
+        @Test
+        @WithMockUser(username = "testuser")
+        void shouldReturn400WithInvalidParameterWhenTypeEnumIsInvalid() throws Exception {
+                mockMvc.perform(get("/api/boats")
+                                .param("type", "SUBMARINE"))
+                                .andExpect(status().isBadRequest())
+                                .andExpect(jsonPath("$.title").value("Invalid Parameter"))
+                                .andExpect(jsonPath("$.parameter").value("type"))
+                                .andExpect(jsonPath("$.rejectedValue").value("SUBMARINE"));
+        }
 
-        mockMvc.perform(delete("/api/boats/" + created.getId()))
-                .andExpect(status().isNoContent());
+        @Test
+        @WithMockUser(username = "testuser")
+        void shouldDeleteBoat() throws Exception {
+                BoatDto.Request request = BoatDto.Request.builder()
+                                .name("Delete Me").description("To be deleted")
+                                .status(BoatStatus.MAINTENANCE).type(BoatType.TRAWLER).build();
 
-        mockMvc.perform(get("/api/boats/" + created.getId()))
-                .andExpect(status().isNotFound());
-    }
+                String responseBody = mockMvc.perform(post("/api/boats")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(request)))
+                                .andExpect(status().isCreated())
+                                .andReturn().getResponse().getContentAsString();
 
-    @Test
-    @WithMockUser(username = "testuser")
-    void shouldFilterBoatsByStatus() throws Exception {
-        // Create two boats with different statuses
-        BoatDto.Request underwayBoat = BoatDto.Request.builder()
-                .name("Underway Vessel").status(BoatStatus.UNDERWAY).type(BoatType.TRAWLER).build();
-        BoatDto.Request inPortBoat = BoatDto.Request.builder()
-                .name("Docked Vessel").status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
+                BoatDto.Response created = objectMapper.readValue(responseBody, BoatDto.Response.class);
 
-        mockMvc.perform(post("/api/boats").contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(underwayBoat))).andExpect(status().isCreated());
-        mockMvc.perform(post("/api/boats").contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(inPortBoat))).andExpect(status().isCreated());
+                mockMvc.perform(delete("/api/boats/" + created.getId()))
+                                .andExpect(status().isNoContent());
 
-        // Filter by UNDERWAY — should return only the first one
-        mockMvc.perform(get("/api/boats").param("status", "UNDERWAY"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].name").value("Underway Vessel"));
-    }
+                mockMvc.perform(get("/api/boats/" + created.getId()))
+                                .andExpect(status().isNotFound());
+        }
 
-    @Test
-    @WithMockUser(username = "testuser")
-    void shouldFilterBoatsByType() throws Exception {
-        // Create two boats with different types
-        BoatDto.Request trawler = BoatDto.Request.builder()
-                .name("Fishing Boat").status(BoatStatus.UNDERWAY).type(BoatType.TRAWLER).build();
-        BoatDto.Request ferry = BoatDto.Request.builder()
-                .name("Passenger Ferry").status(BoatStatus.IN_PORT).type(BoatType.FERRY).build();
+        @Test
+        @WithMockUser(username = "testuser")
+        void shouldFilterBoatsByStatus() throws Exception {
+                // Create two boats with different statuses
+                BoatDto.Request underwayBoat = BoatDto.Request.builder()
+                                .name("Underway Vessel").status(BoatStatus.UNDERWAY).type(BoatType.TRAWLER).build();
+                BoatDto.Request inPortBoat = BoatDto.Request.builder()
+                                .name("Docked Vessel").status(BoatStatus.IN_PORT).type(BoatType.YACHT).build();
 
-        mockMvc.perform(post("/api/boats").contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(trawler))).andExpect(status().isCreated());
-        mockMvc.perform(post("/api/boats").contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(ferry))).andExpect(status().isCreated());
+                mockMvc.perform(post("/api/boats").contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(underwayBoat)))
+                                .andExpect(status().isCreated());
+                mockMvc.perform(post("/api/boats").contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(inPortBoat))).andExpect(status().isCreated());
 
-        // Filter by FERRY — should return only the second one
-        mockMvc.perform(get("/api/boats").param("type", "FERRY"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].name").value("Passenger Ferry"));
-    }
+                // Filter by UNDERWAY — should return only the first one
+                mockMvc.perform(get("/api/boats").param("status", "UNDERWAY"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.totalElements").value(1))
+                                .andExpect(jsonPath("$.content[0].name").value("Underway Vessel"));
+        }
+
+        @Test
+        @WithMockUser(username = "testuser")
+        void shouldFilterBoatsByType() throws Exception {
+                // Create two boats with different types
+                BoatDto.Request trawler = BoatDto.Request.builder()
+                                .name("Fishing Boat").status(BoatStatus.UNDERWAY).type(BoatType.TRAWLER).build();
+                BoatDto.Request ferry = BoatDto.Request.builder()
+                                .name("Passenger Ferry").status(BoatStatus.IN_PORT).type(BoatType.FERRY).build();
+
+                mockMvc.perform(post("/api/boats").contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(trawler))).andExpect(status().isCreated());
+                mockMvc.perform(post("/api/boats").contentType(MediaType.APPLICATION_JSON)
+                                .content(objectMapper.writeValueAsString(ferry))).andExpect(status().isCreated());
+
+                // Filter by FERRY — should return only the second one
+                mockMvc.perform(get("/api/boats").param("type", "FERRY"))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.totalElements").value(1))
+                                .andExpect(jsonPath("$.content[0].name").value("Passenger Ferry"));
+        }
 }
