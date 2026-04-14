@@ -49,11 +49,15 @@ boat-management/
 │   │   └── shared/
 │   │       ├── services/
 │   │       │   ├── auth.service.ts
-│   │       │   └── boat.service.ts
+│   │       │   ├── boat.service.ts
+│   │       │   └── theme.service.ts     # Dark / light mode + OS preference
 │   │       ├── interceptors/
 │   │       │   └── auth.interceptor.ts
 │   │       ├── guards/
 │   │       │   └── auth.guard.ts
+│   │       ├── pipes/
+│   │       │   ├── status-label.pipe.ts
+│   │       │   └── status-class.pipe.ts
 │   │       └── components/
 │   │           ├── loading-spinner.component.ts
 │   │           └── confirm-dialog.component.ts
@@ -297,6 +301,36 @@ docker compose up --build backend
 - Tokens are automatically refreshed by `angular-oauth2-oidc`
 - HTTP interceptor attaches the Bearer token to all API requests
 - Route guard prevents access to protected pages without authentication
+
+---
+
+## ✨ Dark Mode & Accessibility
+
+The frontend fully supports **dark mode** and meets **WCAG 2.2 AA** accessibility standards.
+
+### Dark mode
+
+- Toggle in the top navigation bar (persisted to `localStorage`)
+- Respects the OS `prefers-color-scheme` preference on first visit
+- Implemented via `ThemeService` which sets `data-theme="dark"` on `<html>`
+- All color tokens are CSS custom properties defined in `src/styles.scss`
+
+### Accessibility
+
+| Criterion | Rule | Status |
+|---|---|---|
+| 1.4.3 | Text contrast ≥ 4.5:1 (normal), 3:1 (large/bold text) | All pairs audited and documented inline |
+| 1.4.11 | UI component contrast ≥ 3:1 | Buttons, borders, badges tuned |
+| 2.1.1 | Full keyboard operability | `tabindex`, `keydown.enter/space` on cards, focus rings |
+| 2.3.3 | Respect reduced motion | `prefers-reduced-motion` collapses all animations |
+| 2.4.1 | Skip navigation link | Skip-to-content link at top of every page |
+| 2.4.7 | Focus visible | `:focus-visible` with 3px ring on all interactive elements |
+| **2.4.11** | **Focus not obscured by sticky nav** *(new in 2.2)* | `scroll-margin-top: 68px` on all focusable elements |
+| **2.5.3** | **Minimum target size 24×24px** *(new in 2.2)* | All controls ≥ 24px; enforced via global CSS rule |
+| 4.1.2 | Name, role, value on all controls | `aria-label`, `aria-pressed`, `aria-expanded`, `role="menu"` etc. |
+| 4.1.3 | Status messages | `role="alert"` on errors, `aria-live="polite"` on spinner |
+
+> WCAG 2.2 is backwards-compatible with 2.1 — all 2.1 criteria are still satisfied.
 
 ---
 

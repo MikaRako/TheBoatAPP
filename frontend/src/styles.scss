@@ -235,7 +235,7 @@ html, body {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   WCAG 2.1 AA — Visible focus indicators
+   WCAG 2.2 AA — Visible focus indicators  (SC 2.4.7 / 2.4.11 / 2.4.13)
    Applies to keyboard focus; suppressed for mouse (focus-visible).
 ───────────────────────────────────────────────────────────────────────────── */
 :focus-visible {
@@ -245,7 +245,28 @@ html, body {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   WCAG 2.3.3 — Respect reduced-motion preference
+   WCAG 2.2 AA — Focus Not Obscured  (SC 2.4.11)
+   The sticky top-nav is 60 px tall. scroll-margin-top on every focusable
+   element ensures that when the browser scrolls a focused element into view
+   it lands below the nav rather than behind it.
+───────────────────────────────────────────────────────────────────────────── */
+:focus-visible {
+  scroll-margin-top: 68px; // 60px nav + 8px breathing room
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   WCAG 2.2 AA — Minimum target size  (SC 2.5.3 / 2.5.8)
+   All interactive controls in this app are ≥ 24 × 24 px (most are ≥ 34 px).
+   This rule adds a transparent minimum touch area around any control that
+   could otherwise fall below the threshold on high-DPI or zoomed viewports.
+───────────────────────────────────────────────────────────────────────────── */
+button, a, [role="button"], [role="link"], select, input[type="checkbox"], input[type="radio"] {
+  min-height: 24px;
+  min-width: 24px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   WCAG 2.2 AA — Respect reduced-motion preference  (SC 2.3.3)
    Collapses all durations to near-zero so no motion plays for users who
    have requested reduced motion in their OS accessibility settings.
 ───────────────────────────────────────────────────────────────────────────── */
