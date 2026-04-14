@@ -52,4 +52,12 @@ CREATE INDEX idx_audit_log_outcome     ON audit_log (outcome);
 
 -- Prevent the application role from modifying or deleting audit records.
 -- The INSERT-only restriction is the primary tamper-proofing mechanism at the DB layer.
-REVOKE UPDATE, DELETE, TRUNCATE ON audit_log FROM boatuser;
+-- Wrapped in a DO block so the statement is skipped when the role does not exist
+-- (e.g. in Testcontainers / CI environments that use a different DB user).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'boatuser') THEN
+        REVOKE UPDATE, DELETE, TRUNCATE ON audit_log FROM boatuser;
+    END IF;
+END
+$$;
