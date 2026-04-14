@@ -1,17 +1,22 @@
 import { Component, HostListener } from '@angular/core';
 import { RouterOutlet, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from './shared/services/auth.service';
+import { ThemeService } from './shared/services/theme.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, MatIconModule],
+  imports: [RouterOutlet, RouterLink, MatIconModule, MatTooltipModule],
   template: `
+    <!-- Skip to main content (WCAG 2.4.1) -->
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
     @if (authService.isAuthenticated()) {
-      <nav class="top-nav">
-        <a class="nav-brand" routerLink="/boats">
-          <div class="nav-logo">
+      <nav class="top-nav" aria-label="Main navigation">
+        <a class="nav-brand" routerLink="/boats" aria-label="Boat Management — go to fleet">
+          <div class="nav-logo" aria-hidden="true">
             <mat-icon>sailing</mat-icon>
           </div>
           <span class="nav-title">Boat Management</span>
@@ -19,33 +24,62 @@ import { AuthService } from './shared/services/auth.service';
 
         <div class="nav-links"></div>
 
-        <div class="nav-user">
-          <button class="user-pill" (click)="toggleMenu($event)" [class.open]="menuOpen">
-            <span class="pill-avatar">{{ userInitial }}</span>
-            <span class="pill-name">{{ authService.userName() }}</span>
-            <mat-icon class="pill-chevron">expand_more</mat-icon>
+        <div class="nav-actions">
+          <!-- Dark / light mode toggle -->
+          <button
+            type="button"
+            class="theme-toggle"
+            (click)="themeService.toggle()"
+            [matTooltip]="themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+            matTooltipPosition="below"
+            [attr.aria-label]="themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
+            [attr.aria-pressed]="themeService.isDark()">
+            <mat-icon aria-hidden="true">{{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+            <span class="theme-toggle-label">
+              {{ themeService.isDark() ? 'Light mode' : 'Dark mode' }}
+            </span>
           </button>
 
-          @if (menuOpen) {
-          <div class="user-dropdown" (click)="$event.stopPropagation()">
-            <div class="dropdown-header">
-              <div class="dropdown-avatar">{{ userInitial }}</div>
-              <div class="dropdown-info">
-                <span class="dropdown-name">{{ authService.userName() }}</span>
-                <span class="dropdown-role">User</span>
-              </div>
-            </div>
-            <div class="dropdown-divider"></div>
-            <button class="dropdown-item dropdown-item-danger" (click)="authService.logout()">
-              <mat-icon>logout</mat-icon>
-              Sign out
+          <!-- User pill -->
+          <div class="nav-user">
+            <button
+              type="button"
+              class="user-pill"
+              (click)="toggleMenu($event)"
+              [class.open]="menuOpen"
+              [attr.aria-expanded]="menuOpen"
+              aria-haspopup="menu"
+              [attr.aria-label]="'User menu for ' + authService.userName()">
+              <span class="pill-avatar" aria-hidden="true">{{ userInitial }}</span>
+              <span class="pill-name">{{ authService.userName() }}</span>
+              <mat-icon class="pill-chevron" aria-hidden="true">expand_more</mat-icon>
             </button>
+
+            @if (menuOpen) {
+            <div class="user-dropdown" role="menu" aria-label="User options">
+              <div class="dropdown-header" aria-hidden="true">
+                <div class="dropdown-avatar">{{ userInitial }}</div>
+                <div class="dropdown-info">
+                  <span class="dropdown-name">{{ authService.userName() }}</span>
+                  <span class="dropdown-role">User</span>
+                </div>
+              </div>
+              <div class="dropdown-divider" role="separator"></div>
+              <button
+                type="button"
+                class="dropdown-item dropdown-item-danger"
+                role="menuitem"
+                (click)="authService.logout()">
+                <mat-icon aria-hidden="true">logout</mat-icon>
+                Sign out
+              </button>
+            </div>
+            }
           </div>
-          }
         </div>
       </nav>
 
-      <main class="main-content">
+      <main class="main-content" id="main-content" tabindex="-1">
         <router-outlet />
       </main>
     } @else {
@@ -55,7 +89,7 @@ import { AuthService } from './shared/services/auth.service';
   styles: [`
     .top-nav {
       height: 60px;
-      background: #ffffff;
+      background: var(--color-surface);
       display: flex;
       align-items: center;
       padding: 0 24px;
@@ -92,12 +126,60 @@ import { AuthService } from './shared/services/auth.service';
     .nav-title {
       font-size: 0.95rem;
       font-weight: 700;
-      color: var(--color-primary);
+      color: var(--color-heading);
       letter-spacing: 0.3px;
     }
 
     .nav-links {
       flex: 1;
+    }
+
+    /* ── Right-side actions (theme toggle + user) ── */
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Theme toggle */
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 38px;
+      padding: 0 12px;
+      border-radius: 8px;
+      border: 1.5px solid var(--color-border);
+      background: var(--color-background);
+      color: var(--color-text);
+      cursor: pointer;
+      font-family: var(--font-main);
+      font-size: 0.8rem;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .theme-toggle:hover {
+      background: var(--color-surface-hover);
+      border-color: var(--color-primary);
+    }
+    .theme-toggle mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+    .theme-toggle-label {
+      /* hidden on mobile, visible on desktop */
+    }
+    @media (max-width: 767px) {
+      .theme-toggle {
+        width: 38px;
+        padding: 0;
+        justify-content: center;
+      }
+      .theme-toggle-label { display: none; }
     }
 
     /* ── User avatar + dropdown ── */
@@ -114,14 +196,14 @@ import { AuthService } from './shared/services/auth.service';
       padding: 0 10px 0 5px;
       border-radius: 999px;
       border: 1.5px solid var(--color-border);
-      background: #F8FAFC;
-      color: var(--color-primary);
+      background: var(--color-background);
+      color: var(--color-text);
       cursor: pointer;
       transition: background 0.15s, border-color 0.15s;
     }
     .user-pill:hover,
     .user-pill.open {
-      background: #EDF2F7;
+      background: var(--color-surface-hover);
       border-color: var(--color-primary);
     }
 
@@ -163,9 +245,10 @@ import { AuthService } from './shared/services/auth.service';
       top: calc(100% + 10px);
       right: 0;
       min-width: 200px;
-      background: white;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
       border-radius: 10px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.08);
+      box-shadow: var(--shadow-lg);
       overflow: hidden;
       animation: dropdown-in 0.12s ease;
       z-index: 200;
@@ -236,9 +319,9 @@ import { AuthService } from './shared/services/auth.service';
       transition: background 0.12s;
     }
     .dropdown-item mat-icon { font-size: 18px; width: 18px; height: 18px; }
-    .dropdown-item:hover { background: #F8FAFC; }
+    .dropdown-item:hover { background: var(--color-surface-hover); }
     .dropdown-item-danger { color: var(--color-warn); }
-    .dropdown-item-danger:hover { background: #FEF2F2; }
+    .dropdown-item-danger:hover { background: rgba(185, 28, 28, 0.08); }
 
     @media (max-width: 767px) {
       .user-pill {
@@ -266,12 +349,17 @@ import { AuthService } from './shared/services/auth.service';
       min-height: calc(100vh - 60px);
       background: transparent;
     }
+    /* Remove default outline on programmatic focus of main (skip link target) */
+    .main-content:focus { outline: none; }
   `]
 })
 export class AppComponent {
   menuOpen = false;
 
-  constructor(public authService: AuthService) {}
+  constructor(
+    public authService: AuthService,
+    public themeService: ThemeService
+  ) {}
 
   get userInitial(): string {
     const name = this.authService.userName();

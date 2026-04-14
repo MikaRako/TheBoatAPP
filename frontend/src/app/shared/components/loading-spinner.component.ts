@@ -7,9 +7,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
   standalone: true,
   imports: [CommonModule, MatProgressSpinnerModule],
   template: `
-    <div class="spinner-overlay" [class.fullpage]="fullPage">
-      <mat-spinner [diameter]="diameter" color="primary" />
-      <p *ngIf="message" class="spinner-message">{{ message }}</p>
+    <div class="spinner-overlay" [class.fullpage]="fullPage" role="status" [attr.aria-label]="message || 'Loading'">
+      <mat-spinner [diameter]="diameter" color="primary" aria-hidden="true" />
+      <p *ngIf="message" class="spinner-message" aria-live="polite">{{ message }}</p>
     </div>
   `,
   styles: [`
@@ -24,7 +24,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
     .spinner-overlay.fullpage {
       position: fixed;
       inset: 0;
-      background: rgba(255,255,255,0.8);
+      background: color-mix(in srgb, var(--color-surface) 85%, transparent);
       z-index: 9999;
     }
     .spinner-message {
