@@ -1,0 +1,469 @@
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { NgClass, DatePipe } from '@angular/common';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { Subject, takeUntil } from 'rxjs';
+import { BoatService, Boat, BoatType } from '../../shared/services/boat.service';
+import { AuthService } from '../../shared/services/auth.service';
+import { ConfirmDialogComponent } from '../../shared/components/confirm-dialog.component';
+import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner.component';
+import { StatusLabelPipe } from '../../shared/pipes/status-label.pipe';
+import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
+
+@Component({
+  selector: 'app-boat-detail',
+  standalone: true,
+  imports: [
+    NgClass,
+    DatePipe,
+    RouterLink,
+    MatIconModule,
+    MatDialogModule,
+    MatSnackBarModule,
+    LoadingSpinnerComponent,
+    StatusLabelPipe,
+    StatusClassPipe
+  ],
+  template: `
+    <div class="detail-page">
+
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a routerLink="/boats" class="breadcrumb-link" aria-label="Back to Fleet">
+          <mat-icon aria-hidden="true">arrow_back</mat-icon>
+          Back to Fleet
+        </a>
+      </nav>
+
+      @if (loading) {
+        <app-loading-spinner message="Loading vessel details..." />
+      }
+
+      <!-- Error -->
+      @if (error && !loading) {
+        <div class="state-card" role="alert">
+          <mat-icon class="state-icon error-icon" aria-hidden="true">error_outline</mat-icon>
+          <h3>{{ error }}</h3>
+          <a class="btn-secondary" routerLink="/boats">Back to Fleet</a>
+        </div>
+      }
+
+      @if (boat && !loading) {
+        <div class="detail-layout">
+
+          <!-- Hero card -->
+          <div class="hero-card" [ngClass]="'hero-' + (boat.id % 4)">
+            <div class="hero-watermark" aria-hidden="true">
+              <mat-icon aria-hidden="true">{{ getTypeIcon(boat.type) }}</mat-icon>
+            </div>
+            <div class="hero-top">
+              <div class="hero-badges">
+                <span class="status-badge" [ngClass]="boat.status | statusClass">
+                  {{ boat.status | statusLabel }}
+                </span>
+                <span class="type-badge">{{ getTypeLabel(boat.type) }}</span>
+              </div>
+            </div>
+            <div class="hero-bottom">
+              <h1 class="hero-name">{{ boat.name }}</h1>
+              <span class="hero-id">Vessel ID #{{ boat.id }}</span>
+            </div>
+          </div>
+
+          <!-- Action bar -->
+          <div class="action-bar">
+            <div class="action-date">
+              <mat-icon aria-hidden="true">schedule</mat-icon>
+              Added {{ boat.createdAt | date:'MMM d, y' }}&nbsp;&middot;&nbsp;{{ boat.createdAt | date:'h:mm a' }}
+            </div>
+            <div class="action-buttons">
+              <a class="btn-edit" [routerLink]="['/boats', boat.id, 'edit']" [attr.aria-label]="'Edit vessel ' + boat.name">
+                <mat-icon aria-hidden="true">edit</mat-icon>
+                Edit Vessel
+              </a>
+              <button type="button" class="btn-delete" (click)="confirmDelete()" [attr.aria-label]="'Delete vessel ' + boat.name">
+                <mat-icon aria-hidden="true">delete_outline</mat-icon>
+                Delete Vessel
+              </button>
+            </div>
+          </div>
+
+          <!-- Info cards -->
+          <div class="info-grid">
+            <div class="info-card info-card--full">
+              <div class="info-label">
+                <mat-icon aria-hidden="true">description</mat-icon>
+                Description
+              </div>
+              <p class="info-value">{{ boat.description || 'No description provided.' }}</p>
+            </div>
+          </div>
+
+        </div>
+      }
+    </div>
+  `,
+  styles: [`
+    .detail-page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Breadcrumb */
+    .breadcrumb-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.15s;
+    }
+    .breadcrumb-link mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+    .breadcrumb-link:hover { color: var(--color-primary); }
+
+    /* State card */
+    .state-card {
+      background: var(--color-surface);
+      border-radius: var(--radius);
+      padding: 64px 32px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow-sm);
+    }
+    .state-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      color: var(--color-border);
+    }
+    .error-icon { color: var(--color-warn); }
+    .state-card h3 { font-size: 1.1rem; color: var(--color-text); }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      height: 38px;
+      padding: 0 18px;
+      background: var(--color-primary);
+      color: white;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-top: 8px;
+    }
+
+    /* Hero card */
+    .hero-card {
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      min-height: 220px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+    .hero-0 { background: linear-gradient(135deg, #1B3A6B 0%, #2A5298 100%); }
+    .hero-1 { background: linear-gradient(135deg, #0D4F3C 0%, #16A34A 100%); }
+    .hero-2 { background: linear-gradient(135deg, #44237A 0%, #7C3AED 100%); }
+    .hero-3 { background: linear-gradient(135deg, #7A2D00 0%, #EA580C 100%); }
+
+    .hero-watermark {
+      position: absolute;
+      right: -16px;
+      bottom: -16px;
+      opacity: 0.12;
+      pointer-events: none;
+    }
+    .hero-watermark mat-icon {
+      font-size: 180px;
+      width: 180px;
+      height: 180px;
+      color: white;
+    }
+
+    .hero-top {
+      display: flex;
+      align-items: flex-start;
+    }
+    .hero-badges {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .hero-bottom {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      z-index: 1;
+    }
+    .hero-name {
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: white;
+      line-height: 1.2;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.25);
+    }
+    .hero-id {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.6);
+      letter-spacing: 0.3px;
+    }
+
+    /* Type badge */
+    .type-badge {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+    }
+
+    /* Status badge */
+    .status-badge {
+      display: inline-block;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 20px;
+      width: fit-content;
+    }
+    .badge-active      { background: var(--color-status-active-bg);      color: var(--color-status-active); }
+    .badge-maintenance { background: var(--color-status-maintenance-bg); color: var(--color-status-maintenance); }
+    .badge-port        { background: var(--color-status-port-bg);        color: var(--color-status-port); }
+
+    /* Action bar */
+    .action-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .action-date {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.8rem;
+      color: var(--color-text-secondary);
+      font-weight: 500;
+    }
+    .action-date mat-icon {
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+    }
+    .action-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    .btn-edit {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 40px;
+      padding: 0 20px;
+      background: var(--color-btn-green);
+      color: white;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 0.83rem;
+      font-weight: 600;
+      border: none;
+      transition: background 0.15s;
+    }
+    .btn-edit mat-icon { font-size: 16px; width: 16px; height: 16px; }
+    .btn-edit:hover { background: var(--color-btn-green-hover); }
+
+    .btn-delete {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      height: 40px;
+      padding: 0 20px;
+      background: var(--color-warn);
+      color: white;
+      border-radius: 8px;
+      border: none;
+      font-family: var(--font-main);
+      font-size: 0.83rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-delete mat-icon { font-size: 16px; width: 16px; height: 16px; }
+    .btn-delete:hover { background: var(--color-btn-red-hover); }
+
+    /* Info grid */
+    .detail-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .info-card {
+      background: var(--color-surface);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .info-card--full {
+      grid-column: 1 / -1;
+    }
+    .info-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--color-text-secondary);
+    }
+    .info-label mat-icon {
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+    }
+    .info-value {
+      font-size: 0.95rem;
+      color: var(--color-text);
+      line-height: 1.6;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      white-space: pre-wrap;
+    }
+  `]
+})
+export class BoatDetailComponent implements OnInit, OnDestroy {
+  boat: Boat | null = null;
+  loading = false;
+  error = '';
+
+  private destroy$ = new Subject<void>();
+
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router,
+    private boatService: BoatService,
+    private authService: AuthService,
+    private dialog: MatDialog,
+    private snackBar: MatSnackBar,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  ngOnInit(): void {
+    const id = Number(this.route.snapshot.paramMap.get('id'));
+    this.loadBoat(id);
+
+    this.authService.onTokenReceived$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      const currentId = Number(this.route.snapshot.paramMap.get('id'));
+      if (currentId) this.loadBoat(currentId);
+    });
+  }
+
+  getTypeLabel(type: BoatType): string {
+    switch (type) {
+      case 'SAILBOAT':   return 'Sailboat';
+      case 'TRAWLER':    return 'Trawler';
+      case 'CARGO_SHIP': return 'Cargo Ship';
+      case 'YACHT':      return 'Yacht';
+      case 'FERRY':      return 'Ferry';
+    }
+  }
+
+  getTypeIcon(type: BoatType): string {
+    switch (type) {
+      case 'SAILBOAT':   return 'sailing';
+      case 'TRAWLER':    return 'phishing';
+      case 'CARGO_SHIP': return 'local_shipping';
+      case 'YACHT':      return 'directions_boat';
+      case 'FERRY':      return 'directions_ferry';
+    }
+  }
+
+  private loadBoat(id: number): void {
+    this.loading = true;
+    this.boatService.getBoatById(id).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (boat) => {
+        this.boat    = boat;
+        this.loading = false;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.error   = err.status === 404 ? 'Vessel not found.' : 'Failed to load vessel details.';
+        this.loading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  confirmDelete(): void {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      maxWidth: '95vw',
+      width: '460px',
+      data: {
+        title:       'Delete Vessel',
+        message:     `Are you sure you want to delete "${this.boat?.name}"? This action cannot be undone.`,
+        confirmText: 'Delete',
+        cancelText:  'Cancel',
+        dangerous:   true
+      }
+    });
+
+    dialogRef.afterClosed().pipe(takeUntil(this.destroy$)).subscribe(confirmed => {
+      if (!confirmed || !this.boat) return;
+      this.boatService.deleteBoat(this.boat.id).pipe(takeUntil(this.destroy$)).subscribe({
+        next: () => {
+          this.snackBar.open('Vessel deleted successfully', 'Close', {
+            duration: 3000, panelClass: 'success-snackbar'
+          });
+          this.router.navigate(['/boats']);
+        },
+        error: () => {
+          this.snackBar.open('Failed to delete vessel', 'Close', {
+            duration: 3000, panelClass: 'error-snackbar'
+          });
+        }
+      });
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+}

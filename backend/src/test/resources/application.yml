@@ -1,0 +1,22 @@
+# Test-scoped overrides.
+# Provides stub values for all required env-var placeholders that have no
+# defaults in application.yml (those were intentionally removed to force
+# explicit configuration in non-dev environments).
+#
+# These values are never used at runtime — JwtDecoder and OpenApiConfig are
+# mocked or irrelevant in @WebMvcTest / @ExtendWith(MockitoExtension) tests.
+
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost/realms/test
+          jwk-set-uri: http://localhost/realms/test/protocol/openid-connect/certs
+
+springdoc:
+  swagger-ui:
+    oauth2-redirect-url: http://localhost/swagger-ui/oauth2-redirect.html
+  oAuthFlow:
+    authorizationUrl: http://localhost/realms/test/protocol/openid-connect/auth
+    tokenUrl: http://localhost/realms/test/protocol/openid-connect/token

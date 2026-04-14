@@ -1,0 +1,61 @@
+spring:
+  application:
+    name: boat-management
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:boatdb}
+    username: ${DB_USER:boatuser}
+    password: ${DB_PASSWORD:boatpassword}
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    baseline-on-migrate: true
+    baseline-version: 1
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
+          jwk-set-uri: ${KEYCLOAK_JWK_URI}
+
+server:
+  port: ${SERVER_PORT:8081}
+  servlet:
+    context-path: /
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    oauth2-redirect-url: ${SWAGGER_OAUTH2_REDIRECT}
+  oAuthFlow:
+    authorizationUrl: ${KEYCLOAK_AUTH_URL}
+    tokenUrl: ${KEYCLOAK_TOKEN_URL}
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [boat-backend] [%X{user}] %logger{36} - %msg%n"
+  level:
+    com.boatmanagement: DEBUG
+    com.boatmanagement.audit: INFO   # audit package logs at INFO to reduce noise in dev
+    org.springframework.security: INFO
+    org.hibernate.SQL: WARN
+
+# Audit async thread-pool configuration.
+# Tune these values based on observed write throughput in production.
+audit:
+  async:
+    core-pool-size: 2
+    max-pool-size: 4
+    queue-capacity: 500
