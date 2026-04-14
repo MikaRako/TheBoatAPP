@@ -47,12 +47,18 @@ export interface ConfirmDialogData {
     }
 
     .dialog-container {
-      padding: 36px 28px 28px;
-      min-width: 340px;
-      max-width: 460px;
+      padding: 28px 20px 20px;
+      width: 100%;
+      box-sizing: border-box;
       display: flex;
       flex-direction: column;
       align-items: center;
+    }
+
+    @media (min-width: 480px) {
+      .dialog-container {
+        padding: 36px 28px 28px;
+      }
     }
 
     /* Icon */
