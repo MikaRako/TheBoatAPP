@@ -221,6 +221,65 @@ class BoatServiceTest {
         }
 
         @Test
+        @DisplayName("should treat null search as empty string (no filter)")
+        void should_treatNullSearchAsEmpty_when_searchIsNull() {
+            // Arrange
+            when(boatRepository.findByFilters(eq(""), isNull(), isNull(), any(Pageable.class)))
+                    .thenReturn(Page.empty());
+
+            // Act — null search must be normalised to "" before hitting the repository
+            boatService.findAll(null, null, null, 0, 10, "createdAt", "desc");
+
+            // Assert
+            verify(boatRepository).findByFilters(eq(""), isNull(), isNull(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("should trim whitespace from search term before forwarding to repository")
+        void should_trimSearchTerm_when_searchHasLeadingOrTrailingWhitespace() {
+            // Arrange
+            when(boatRepository.findByFilters(eq("explorer"), isNull(), isNull(), any(Pageable.class)))
+                    .thenReturn(Page.empty());
+
+            // Act — whitespace must be stripped
+            boatService.findAll("  explorer  ", null, null, 0, 10, "createdAt", "desc");
+
+            // Assert
+            verify(boatRepository).findByFilters(eq("explorer"), isNull(), isNull(), any(Pageable.class));
+        }
+
+        @Test
+        @DisplayName("should fall back to 'createdAt' sort field when sortBy is null")
+        void should_fallbackToCreatedAt_when_sortByIsNull() {
+            // Arrange
+            when(boatRepository.findByFilters(any(), any(), any(), any(Pageable.class))).thenReturn(Page.empty());
+
+            // Act — null sortBy must not cause a NullPointerException
+            boatService.findAll("", null, null, 0, 10, null, "desc");
+
+            // Assert — pageable uses the fallback field
+            verify(boatRepository).findByFilters(eq(""), isNull(), isNull(), argThat(pageable ->
+                    pageable.getSort().getOrderFor("createdAt") != null
+            ));
+        }
+
+        @Test
+        @DisplayName("should fall back to descending sort when sortDir is null")
+        void should_fallbackToDescending_when_sortDirIsNull() {
+            // Arrange
+            when(boatRepository.findByFilters(any(), any(), any(), any(Pageable.class))).thenReturn(Page.empty());
+
+            // Act — null sortDir must not cause a NullPointerException
+            boatService.findAll("", null, null, 0, 10, "createdAt", null);
+
+            // Assert — pageable uses DESC as the fallback direction
+            verify(boatRepository).findByFilters(eq(""), isNull(), isNull(), argThat(pageable ->
+                    pageable.getSort().getOrderFor("createdAt") != null &&
+                    pageable.getSort().getOrderFor("createdAt").getDirection() == Sort.Direction.DESC
+            ));
+        }
+
+        @Test
         @DisplayName("should default to ascending sort for any sortDir value that is not 'desc'")
         void should_defaultToAscendingSort_when_sortDirIsNotDesc() {
             // Arrange — "ASC", "random", "" all produce ascending order

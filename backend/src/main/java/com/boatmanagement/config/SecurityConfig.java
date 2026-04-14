@@ -3,6 +3,7 @@ package com.boatmanagement.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -18,6 +19,7 @@ import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity   // activates @PreAuthorize on AuditLogController
 public class SecurityConfig {
 
     @Value("${cors.allowed-origins:http://localhost:4200}")
@@ -56,8 +58,16 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
+        List<String> origins = List.of(allowedOrigins.split(","));
+        boolean hasWildcard = origins.stream().anyMatch(o -> o.trim().equals("*"));
+        if (hasWildcard) {
+            throw new IllegalStateException(
+                    "cors.allowed-origins must not contain '*' when AllowCredentials=true. " +
+                    "Set CORS_ALLOWED_ORIGINS to explicit origins (e.g. http://localhost:4200).");
+        }
+
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(List.of(allowedOrigins.split(",")));
+        configuration.setAllowedOriginPatterns(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));

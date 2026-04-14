@@ -8,8 +8,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+import org.springframework.lang.Nullable;
 
 import java.time.Instant;
+import java.util.List;
 
 public class BoatDto {
 
@@ -26,7 +28,7 @@ public class BoatDto {
         @Schema(description = "Boat name", example = "Sea Explorer")
         private String name;
 
-        @Schema(description = "Boat description", example = "A luxury sailing boat")
+        @Nullable @Schema(description = "Boat description", example = "A luxury sailing boat")
         private String description;
 
         @Schema(description = "Boat status", example = "IN_PORT")
@@ -47,20 +49,20 @@ public class BoatDto {
     @AllArgsConstructor
     @Builder
     public static class Request {
-        @Schema(description = "Boat name", example = "Sea Explorer", required = true)
+        @Schema(description = "Boat name", example = "Sea Explorer", requiredMode = Schema.RequiredMode.REQUIRED)
         @NotBlank(message = "Name is required")
         @Size(min = 1, max = 255, message = "Name must be between 1 and 255 characters")
         private String name;
 
-        @Schema(description = "Boat description", example = "A luxury sailing boat")
+        @Nullable @Schema(description = "Boat description", example = "A luxury sailing boat")
         @Size(max = 2000, message = "Description must not exceed 2000 characters")
         private String description;
 
-        @Schema(description = "Boat status", example = "IN_PORT")
+        @Nullable @Schema(description = "Boat status", example = "IN_PORT")
         @NotNull(message = "Status is required")
         private BoatStatus status;
 
-        @Schema(description = "Boat type", example = "YACHT")
+        @Nullable @Schema(description = "Boat type", example = "YACHT")
         @NotNull(message = "Type is required")
         private BoatType type;
     }
@@ -72,7 +74,7 @@ public class BoatDto {
     @AllArgsConstructor
     @Builder
     public static class PageResponse {
-        private java.util.List<Response> content;
+        @Nullable private List<Response> content;
         private int page;
         private int size;
         private long totalElements;
