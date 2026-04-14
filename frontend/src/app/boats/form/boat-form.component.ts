@@ -30,11 +30,19 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
   ],
   template: `
     <div class="page-container">
-      <div class="breadcrumb">
-        <a routerLink="/boats">Fleet</a>
-        <mat-icon>chevron_right</mat-icon>
-        @if (isEditMode) { <span>Edit Boat</span> } @else { <span>Add Boat</span> }
-      </div>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ol>
+          <li><a routerLink="/boats">Fleet</a></li>
+          <li>
+            <mat-icon aria-hidden="true">chevron_right</mat-icon>
+            @if (isEditMode) {
+              <span aria-current="page">Edit Boat</span>
+            } @else {
+              <span aria-current="page">Add Boat</span>
+            }
+          </li>
+        </ol>
+      </nav>
 
       @if (loadingData) {
         <app-loading-spinner message="Loading..." />
@@ -56,7 +64,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Boat Name *</mat-label>
               <mat-icon matPrefix>directions_boat</mat-icon>
-              <input matInput formControlName="name" placeholder="e.g. Sea Explorer" maxlength="40" />
+              <input matInput formControlName="name" placeholder="e.g. Sea Explorer" maxlength="40" aria-required="true" />
               <mat-hint align="end">{{ boatForm.get('name')?.value?.length || 0 }}/40</mat-hint>
               @if (boatForm.get('name')?.hasError('required'))  { <mat-error>Name is required</mat-error> }
               @if (boatForm.get('name')?.hasError('minlength')) { <mat-error>Name must be at least 1 character</mat-error> }
@@ -81,7 +89,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Status *</mat-label>
                 <mat-icon matPrefix>radio_button_checked</mat-icon>
-                <mat-select formControlName="status">
+                <mat-select formControlName="status" aria-required="true">
                   <mat-option value="UNDERWAY">Underway</mat-option>
                   <mat-option value="IN_PORT">In Port</mat-option>
                   <mat-option value="MAINTENANCE">Maintenance</mat-option>
@@ -92,7 +100,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Vessel Type *</mat-label>
                 <mat-icon matPrefix>directions_boat</mat-icon>
-                <mat-select formControlName="type">
+                <mat-select formControlName="type" aria-required="true">
                   <mat-option value="SAILBOAT">Sailboat</mat-option>
                   <mat-option value="TRAWLER">Trawler</mat-option>
                   <mat-option value="CARGO_SHIP">Cargo Ship</mat-option>
@@ -129,12 +137,18 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       padding: 28px 24px;
     }
     .breadcrumb {
-      display: flex;
-      align-items: center;
-      gap: 4px;
       margin-bottom: 24px;
       color: var(--color-text-secondary);
       font-size: 0.9rem;
+      ol {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      li { display: flex; align-items: center; gap: 4px; }
       a { color: var(--color-heading); text-decoration: none; }
       a:hover { text-decoration: underline; }
       mat-icon { font-size: 18px; width: 18px; height: 18px; }

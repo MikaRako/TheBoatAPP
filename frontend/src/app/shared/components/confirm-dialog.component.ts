@@ -29,10 +29,10 @@ export interface ConfirmDialogData {
       <p  id="dialog-message" class="dialog-message">{{ data.message }}</p>
 
       <div class="dialog-actions">
-        <button class="btn-confirm" [class.btn-danger]="data.dangerous" (click)="dialogRef.close(true)">
+        <button type="button" class="btn-confirm" [class.btn-danger]="data.dangerous" (click)="dialogRef.close(true)">
           {{ data.confirmText || 'Confirm' }}
         </button>
-        <button class="btn-cancel" (click)="dialogRef.close(false)">
+        <button type="button" class="btn-cancel" (click)="dialogRef.close(false)">
           {{ data.cancelText || 'Cancel' }}
         </button>
       </div>

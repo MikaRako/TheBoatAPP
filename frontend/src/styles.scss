@@ -245,6 +245,20 @@ html, body {
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   WCAG 2.3.3 — Respect reduced-motion preference
+   Collapses all durations to near-zero so no motion plays for users who
+   have requested reduced motion in their OS accessibility settings.
+───────────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1      !important;
+    transition-duration:       0.01ms !important;
+    scroll-behavior:           auto   !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    SKIP NAVIGATION LINK  (WCAG 2.4.1)
 ───────────────────────────────────────────────────────────────────────────── */
 .skip-link {

@@ -27,6 +27,7 @@ import { ThemeService } from './shared/services/theme.service';
         <div class="nav-actions">
           <!-- Dark / light mode toggle -->
           <button
+            type="button"
             class="theme-toggle"
             (click)="themeService.toggle()"
             [matTooltip]="themeService.isDark() ? 'Switch to light mode' : 'Switch to dark mode'"
@@ -42,6 +43,7 @@ import { ThemeService } from './shared/services/theme.service';
           <!-- User pill -->
           <div class="nav-user">
             <button
+              type="button"
               class="user-pill"
               (click)="toggleMenu($event)"
               [class.open]="menuOpen"
@@ -64,6 +66,7 @@ import { ThemeService } from './shared/services/theme.service';
               </div>
               <div class="dropdown-divider" role="separator"></div>
               <button
+                type="button"
                 class="dropdown-item dropdown-item-danger"
                 role="menuitem"
                 (click)="authService.logout()">

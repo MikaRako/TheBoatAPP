@@ -30,12 +30,12 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
     <div class="detail-page">
 
       <!-- Breadcrumb -->
-      <div class="breadcrumb">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
         <a routerLink="/boats" class="breadcrumb-link" aria-label="Back to Fleet">
           <mat-icon aria-hidden="true">arrow_back</mat-icon>
           Back to Fleet
         </a>
-      </div>
+      </nav>
 
       @if (loading) {
         <app-loading-spinner message="Loading vessel details..." />
@@ -43,8 +43,8 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
 
       <!-- Error -->
       @if (error && !loading) {
-        <div class="state-card">
-          <mat-icon class="state-icon error-icon">error_outline</mat-icon>
+        <div class="state-card" role="alert">
+          <mat-icon class="state-icon error-icon" aria-hidden="true">error_outline</mat-icon>
           <h3>{{ error }}</h3>
           <a class="btn-secondary" routerLink="/boats">Back to Fleet</a>
         </div>
@@ -55,8 +55,8 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
 
           <!-- Hero card -->
           <div class="hero-card" [ngClass]="'hero-' + (boat.id % 4)">
-            <div class="hero-watermark">
-              <mat-icon>{{ getTypeIcon(boat.type) }}</mat-icon>
+            <div class="hero-watermark" aria-hidden="true">
+              <mat-icon aria-hidden="true">{{ getTypeIcon(boat.type) }}</mat-icon>
             </div>
             <div class="hero-top">
               <div class="hero-badges">
@@ -75,7 +75,7 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
           <!-- Action bar -->
           <div class="action-bar">
             <div class="action-date">
-              <mat-icon>schedule</mat-icon>
+              <mat-icon aria-hidden="true">schedule</mat-icon>
               Added {{ boat.createdAt | date:'MMM d, y' }}&nbsp;&middot;&nbsp;{{ boat.createdAt | date:'h:mm a' }}
             </div>
             <div class="action-buttons">
@@ -83,7 +83,7 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
                 <mat-icon aria-hidden="true">edit</mat-icon>
                 Edit Vessel
               </a>
-              <button class="btn-delete" (click)="confirmDelete()" [attr.aria-label]="'Delete vessel ' + boat.name">
+              <button type="button" class="btn-delete" (click)="confirmDelete()" [attr.aria-label]="'Delete vessel ' + boat.name">
                 <mat-icon aria-hidden="true">delete_outline</mat-icon>
                 Delete Vessel
               </button>
@@ -94,7 +94,7 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
           <div class="info-grid">
             <div class="info-card info-card--full">
               <div class="info-label">
-                <mat-icon>description</mat-icon>
+                <mat-icon aria-hidden="true">description</mat-icon>
                 Description
               </div>
               <p class="info-value">{{ boat.description || 'No description provided.' }}</p>

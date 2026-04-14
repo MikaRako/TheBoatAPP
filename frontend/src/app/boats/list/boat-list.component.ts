@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef } from '@angular/core';
 import { NgClass, DatePipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatButtonModule } from '@angular/material/button';
@@ -67,7 +67,7 @@ interface ListState {
               aria-label="Search vessels by name or description"
               type="search" />
             @if (searchControl.value) {
-              <button class="search-clear" (click)="searchControl.setValue('')" aria-label="Clear search">
+              <button type="button" class="search-clear" (click)="searchControl.setValue('')" aria-label="Clear search">
                 <mat-icon aria-hidden="true">close</mat-icon>
               </button>
             }
@@ -84,7 +84,7 @@ interface ListState {
         <div class="stat-block">
           <span class="fleet-ready-label">FLEET:</span>
           <span class="fleet-total-chip">
-            <mat-icon>directions_boat</mat-icon>
+            <mat-icon aria-hidden="true">directions_boat</mat-icon>
             {{ totalElements }} Vessels
           </span>
         </div>
@@ -104,10 +104,10 @@ interface ListState {
           </div>
 
           <div class="status-tabs" role="group" aria-label="Filter by vessel status">
-            <button class="status-tab" [class.active]="statusFilter === 'all'" (click)="setStatusFilter('all')" [attr.aria-pressed]="statusFilter === 'all'">All</button>
-            <button class="status-tab active-tab" [class.active]="statusFilter === 'UNDERWAY'" (click)="setStatusFilter('UNDERWAY')" [attr.aria-pressed]="statusFilter === 'UNDERWAY'">Underway</button>
-            <button class="status-tab port-tab" [class.active]="statusFilter === 'IN_PORT'" (click)="setStatusFilter('IN_PORT')" [attr.aria-pressed]="statusFilter === 'IN_PORT'">In Port</button>
-            <button class="status-tab maint-tab" [class.active]="statusFilter === 'MAINTENANCE'" (click)="setStatusFilter('MAINTENANCE')" [attr.aria-pressed]="statusFilter === 'MAINTENANCE'">Maintenance</button>
+            <button type="button" class="status-tab" [class.active]="statusFilter === 'all'" (click)="setStatusFilter('all')" [attr.aria-pressed]="statusFilter === 'all'">All</button>
+            <button type="button" class="status-tab active-tab" [class.active]="statusFilter === 'UNDERWAY'" (click)="setStatusFilter('UNDERWAY')" [attr.aria-pressed]="statusFilter === 'UNDERWAY'">Underway</button>
+            <button type="button" class="status-tab port-tab" [class.active]="statusFilter === 'IN_PORT'" (click)="setStatusFilter('IN_PORT')" [attr.aria-pressed]="statusFilter === 'IN_PORT'">In Port</button>
+            <button type="button" class="status-tab maint-tab" [class.active]="statusFilter === 'MAINTENANCE'" (click)="setStatusFilter('MAINTENANCE')" [attr.aria-pressed]="statusFilter === 'MAINTENANCE'">Maintenance</button>
           </div>
         </div>
       </div>
@@ -119,18 +119,18 @@ interface ListState {
 
       <!-- Error state -->
       @if (error && !loading) {
-        <div class="state-card">
-          <mat-icon class="state-icon error-icon">error_outline</mat-icon>
+        <div class="state-card" role="alert">
+          <mat-icon class="state-icon error-icon" aria-hidden="true">error_outline</mat-icon>
           <h3>Failed to load vessels</h3>
           <p>{{ error }}</p>
-          <button class="btn-retry" (click)="refresh()">Try Again</button>
+          <button type="button" class="btn-retry" (click)="refresh()">Try Again</button>
         </div>
       }
 
       <!-- Empty state -->
       @if (!loading && !error && boats.length === 0) {
         <div class="state-card">
-          <mat-icon class="state-icon">sailing</mat-icon>
+          <mat-icon class="state-icon" aria-hidden="true">sailing</mat-icon>
           <h3>No vessels found</h3>
           @if (searchControl.value) {
             <p>No results for "{{ searchControl.value }}"</p>
@@ -151,13 +151,17 @@ interface ListState {
             <div class="vessel-card"
                  [routerLink]="['/boats', boat.id]"
                  [class.vessel-card--list]="isListView"
-                 style="cursor:pointer">
+                 role="link"
+                 tabindex="0"
+                 [attr.aria-label]="boat.name + ' — view vessel details'"
+                 (keydown.enter)="navigateToBoat(boat.id)"
+                 (keydown.space)="$event.preventDefault(); navigateToBoat(boat.id)">
 
               <!-- ── Card view (4 / 8 items per page) ── -->
               @if (!isListView) {
                 <div class="card-image">
                   <div class="image-placeholder" [ngClass]="'img-' + (boat.id % 4)">
-                    <mat-icon>directions_boat</mat-icon>
+                    <mat-icon aria-hidden="true">directions_boat</mat-icon>
                   </div>
                 </div>
                 <div class="card-body">
@@ -183,7 +187,7 @@ interface ListState {
                       <a class="card-icon-btn" [routerLink]="['/boats', boat.id, 'edit']" matTooltip="Edit vessel" [attr.aria-label]="'Edit ' + boat.name">
                         <mat-icon aria-hidden="true">edit</mat-icon>
                       </a>
-                      <button class="card-icon-btn card-icon-btn-danger" (click)="confirmDelete(boat)" matTooltip="Delete vessel" [attr.aria-label]="'Delete ' + boat.name">
+                      <button type="button" class="card-icon-btn card-icon-btn-danger" (click)="confirmDelete(boat)" matTooltip="Delete vessel" [attr.aria-label]="'Delete ' + boat.name">
                         <mat-icon aria-hidden="true">delete_outline</mat-icon>
                       </button>
                     </div>
@@ -194,7 +198,7 @@ interface ListState {
               <!-- ── List view (16 / 32 items per page) ── -->
               @if (isListView) {
                 <div class="list-strip" [ngClass]="'img-' + (boat.id % 4)">
-                  <mat-icon>directions_boat</mat-icon>
+                  <mat-icon aria-hidden="true">directions_boat</mat-icon>
                 </div>
                 <div class="list-info">
                   <h3 class="vessel-name">{{ boat.name }}</h3>
@@ -204,7 +208,7 @@ interface ListState {
                   {{ boat.status | statusLabel }}
                 </span>
                 <span class="list-date">
-                  <mat-icon>calendar_today</mat-icon>
+                  <mat-icon aria-hidden="true">calendar_today</mat-icon>
                   {{ boat.createdAt | date:'MMM d, y' }}
                 </span>
                 <div class="list-actions" (click)="$event.stopPropagation()">
@@ -214,7 +218,7 @@ interface ListState {
                   <a class="card-icon-btn" [routerLink]="['/boats', boat.id, 'edit']" matTooltip="Edit vessel" [attr.aria-label]="'Edit ' + boat.name">
                     <mat-icon aria-hidden="true">edit</mat-icon>
                   </a>
-                  <button class="card-icon-btn card-icon-btn-danger" (click)="confirmDelete(boat)" matTooltip="Delete vessel" [attr.aria-label]="'Delete ' + boat.name">
+                  <button type="button" class="card-icon-btn card-icon-btn-danger" (click)="confirmDelete(boat)" matTooltip="Delete vessel" [attr.aria-label]="'Delete ' + boat.name">
                     <mat-icon aria-hidden="true">delete_outline</mat-icon>
                   </button>
                 </div>
@@ -920,8 +924,13 @@ export class BoatListComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private router: Router
   ) {}
+
+  navigateToBoat(id: number): void {
+    this.router.navigate(['/boats', id]);
+  }
 
   @HostListener('window:resize')
   onResize(): void {
