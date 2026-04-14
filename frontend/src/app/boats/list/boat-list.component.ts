@@ -59,19 +59,21 @@ interface ListState {
         </div>
         <div class="top-bar-right">
           <div class="search-wrapper">
-            <mat-icon class="search-icon">search</mat-icon>
+            <mat-icon class="search-icon" aria-hidden="true">search</mat-icon>
             <input
               class="search-input"
               [formControl]="searchControl"
-              placeholder="Search by name or description..." />
+              placeholder="Search by name or description..."
+              aria-label="Search vessels by name or description"
+              type="search" />
             @if (searchControl.value) {
-              <button class="search-clear" (click)="searchControl.setValue('')">
-                <mat-icon>close</mat-icon>
+              <button class="search-clear" (click)="searchControl.setValue('')" aria-label="Clear search">
+                <mat-icon aria-hidden="true">close</mat-icon>
               </button>
             }
           </div>
-          <a class="btn-add" routerLink="/boats/new">
-            <mat-icon>add</mat-icon>
+          <a class="btn-add" routerLink="/boats/new" aria-label="Add new boat">
+            <mat-icon aria-hidden="true">add</mat-icon>
             ADD NEW BOAT
           </a>
         </div>
@@ -89,7 +91,8 @@ interface ListState {
 
         <div class="filter-group">
           <div class="vessel-type-select">
-            <select class="type-select" (change)="onTypeChange($event)">
+            <label for="type-filter" class="sr-only">Filter by vessel type</label>
+            <select id="type-filter" class="type-select" (change)="onTypeChange($event)" aria-label="Filter by vessel type">
               <option value="all"       [selected]="typeFilter === 'all'">All Vessel Types</option>
               <option value="SAILBOAT"  [selected]="typeFilter === 'SAILBOAT'">Sailboat</option>
               <option value="TRAWLER"   [selected]="typeFilter === 'TRAWLER'">Trawler</option>
@@ -97,14 +100,14 @@ interface ListState {
               <option value="YACHT"     [selected]="typeFilter === 'YACHT'">Yacht</option>
               <option value="FERRY"     [selected]="typeFilter === 'FERRY'">Ferry</option>
             </select>
-            <mat-icon class="select-arrow">expand_more</mat-icon>
+            <mat-icon class="select-arrow" aria-hidden="true">expand_more</mat-icon>
           </div>
 
-          <div class="status-tabs">
-            <button class="status-tab" [class.active]="statusFilter === 'all'" (click)="setStatusFilter('all')">All</button>
-            <button class="status-tab active-tab" [class.active]="statusFilter === 'UNDERWAY'" (click)="setStatusFilter('UNDERWAY')">Underway</button>
-            <button class="status-tab port-tab" [class.active]="statusFilter === 'IN_PORT'" (click)="setStatusFilter('IN_PORT')">In Port</button>
-            <button class="status-tab maint-tab" [class.active]="statusFilter === 'MAINTENANCE'" (click)="setStatusFilter('MAINTENANCE')">Maintenance</button>
+          <div class="status-tabs" role="group" aria-label="Filter by vessel status">
+            <button class="status-tab" [class.active]="statusFilter === 'all'" (click)="setStatusFilter('all')" [attr.aria-pressed]="statusFilter === 'all'">All</button>
+            <button class="status-tab active-tab" [class.active]="statusFilter === 'UNDERWAY'" (click)="setStatusFilter('UNDERWAY')" [attr.aria-pressed]="statusFilter === 'UNDERWAY'">Underway</button>
+            <button class="status-tab port-tab" [class.active]="statusFilter === 'IN_PORT'" (click)="setStatusFilter('IN_PORT')" [attr.aria-pressed]="statusFilter === 'IN_PORT'">In Port</button>
+            <button class="status-tab maint-tab" [class.active]="statusFilter === 'MAINTENANCE'" (click)="setStatusFilter('MAINTENANCE')" [attr.aria-pressed]="statusFilter === 'MAINTENANCE'">Maintenance</button>
           </div>
         </div>
       </div>
@@ -174,14 +177,14 @@ interface ListState {
                   </div>
                   <div class="card-actions">
                     <div class="card-btn-group" (click)="$event.stopPropagation()">
-                      <a class="card-icon-btn card-icon-btn-view" [routerLink]="['/boats', boat.id]" matTooltip="View vessel">
-                        <mat-icon>visibility</mat-icon>
+                      <a class="card-icon-btn card-icon-btn-view" [routerLink]="['/boats', boat.id]" matTooltip="View vessel" [attr.aria-label]="'View ' + boat.name">
+                        <mat-icon aria-hidden="true">visibility</mat-icon>
                       </a>
-                      <a class="card-icon-btn" [routerLink]="['/boats', boat.id, 'edit']" matTooltip="Edit vessel">
-                        <mat-icon>edit</mat-icon>
+                      <a class="card-icon-btn" [routerLink]="['/boats', boat.id, 'edit']" matTooltip="Edit vessel" [attr.aria-label]="'Edit ' + boat.name">
+                        <mat-icon aria-hidden="true">edit</mat-icon>
                       </a>
-                      <button class="card-icon-btn card-icon-btn-danger" (click)="confirmDelete(boat)" matTooltip="Delete vessel">
-                        <mat-icon>delete_outline</mat-icon>
+                      <button class="card-icon-btn card-icon-btn-danger" (click)="confirmDelete(boat)" matTooltip="Delete vessel" [attr.aria-label]="'Delete ' + boat.name">
+                        <mat-icon aria-hidden="true">delete_outline</mat-icon>
                       </button>
                     </div>
                   </div>
@@ -205,14 +208,14 @@ interface ListState {
                   {{ boat.createdAt | date:'MMM d, y' }}
                 </span>
                 <div class="list-actions" (click)="$event.stopPropagation()">
-                  <a class="card-icon-btn card-icon-btn-view" [routerLink]="['/boats', boat.id]" matTooltip="View vessel">
-                    <mat-icon>visibility</mat-icon>
+                  <a class="card-icon-btn card-icon-btn-view" [routerLink]="['/boats', boat.id]" matTooltip="View vessel" [attr.aria-label]="'View ' + boat.name">
+                    <mat-icon aria-hidden="true">visibility</mat-icon>
                   </a>
-                  <a class="card-icon-btn" [routerLink]="['/boats', boat.id, 'edit']" matTooltip="Edit vessel">
-                    <mat-icon>edit</mat-icon>
+                  <a class="card-icon-btn" [routerLink]="['/boats', boat.id, 'edit']" matTooltip="Edit vessel" [attr.aria-label]="'Edit ' + boat.name">
+                    <mat-icon aria-hidden="true">edit</mat-icon>
                   </a>
-                  <button class="card-icon-btn card-icon-btn-danger" (click)="confirmDelete(boat)" matTooltip="Delete vessel">
-                    <mat-icon>delete_outline</mat-icon>
+                  <button class="card-icon-btn card-icon-btn-danger" (click)="confirmDelete(boat)" matTooltip="Delete vessel" [attr.aria-label]="'Delete ' + boat.name">
+                    <mat-icon aria-hidden="true">delete_outline</mat-icon>
                   </button>
                 </div>
               }
@@ -292,13 +295,29 @@ interface ListState {
       border-radius: 8px;
       font-family: var(--font-main);
       font-size: 0.85rem;
-      background: white;
+      background: var(--color-surface);
       color: var(--color-text);
       outline: none;
       transition: border-color 0.15s;
     }
-    .search-input:focus { border-color: var(--color-primary); }
+    .search-input:focus {
+      border-color: var(--color-primary);
+      outline: 3px solid var(--color-focus-ring);
+      outline-offset: 2px;
+    }
     .search-input::placeholder { color: var(--color-text-muted); }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0,0,0,0);
+      white-space: nowrap;
+      border: 0;
+    }
     .search-clear {
       position: absolute;
       right: 8px;
@@ -359,8 +378,8 @@ interface ListState {
       display: flex;
       align-items: center;
       gap: 4px;
-      background: #dce6f5;
-      color: #2a5298;
+      background: var(--color-status-port-bg);
+      color: var(--color-status-port);
       border-radius: 20px;
       padding: 3px 10px 3px 6px;
       font-size: 0.75rem;
@@ -389,7 +408,7 @@ interface ListState {
       font-family: var(--font-main);
       font-size: 0.83rem;
       color: var(--color-text);
-      background: white;
+      background: var(--color-surface);
       appearance: none;
       cursor: pointer;
       outline: none;
@@ -410,7 +429,7 @@ interface ListState {
       border: 1.5px solid var(--color-border);
       border-radius: 8px;
       overflow: hidden;
-      background: white;
+      background: var(--color-surface);
     }
     .status-tab {
       height: 36px;
@@ -426,14 +445,14 @@ interface ListState {
       border-right: 1px solid var(--color-border);
     }
     .status-tab:last-child { border-right: none; }
-    .status-tab:hover { background: #F8FAFC; }
+    .status-tab:hover { background: var(--color-surface-hover); }
     .status-tab.active {
       background: var(--color-primary);
       color: white;
     }
-    .status-tab.active-tab.active { background: #16A34A; }
-    .status-tab.port-tab.active { background: #2a5298; }
-    .status-tab.maint-tab.active { background: #D97706; }
+    .status-tab.active-tab.active { background: var(--color-btn-green); }
+    .status-tab.port-tab.active   { background: var(--color-btn-blue); }
+    .status-tab.maint-tab.active  { background: #B45309; }
 
     /* ── Loading bar ── */
     .top-loader {
@@ -443,7 +462,7 @@ interface ListState {
 
     /* ── State cards ── */
     .state-card {
-      background: white;
+      background: var(--color-surface);
       border-radius: var(--radius);
       padding: 64px 32px;
       text-align: center;
@@ -496,7 +515,7 @@ interface ListState {
 
     /* ── Vessel card ── */
     .vessel-card {
-      background: white;
+      background: var(--color-surface);
       border-radius: var(--radius);
       box-shadow: var(--shadow-sm);
       overflow: hidden;
@@ -650,7 +669,7 @@ interface ListState {
       height: 34px;
       border-radius: 6px;
       border: none;
-      background: #16A34A;
+      background: var(--color-btn-green);
       color: white;
       cursor: pointer;
       text-decoration: none;
@@ -658,17 +677,17 @@ interface ListState {
       flex-shrink: 0;
     }
     .card-icon-btn mat-icon { font-size: 16px; width: 16px; height: 16px; }
-    .card-icon-btn:hover { background: #15803d; transform: translateY(-1px); }
+    .card-icon-btn:hover { background: var(--color-btn-green-hover); transform: translateY(-1px); }
 
     .card-icon-btn-danger {
-      background: var(--color-warn);
+      background: var(--color-btn-red);
     }
-    .card-icon-btn-danger:hover { background: #dc2626; transform: translateY(-1px); }
+    .card-icon-btn-danger:hover { background: var(--color-btn-red-hover); transform: translateY(-1px); }
 
     .card-icon-btn-view {
-      background: #2a5298;
+      background: var(--color-btn-blue);
     }
-    .card-icon-btn-view:hover { background: #1a3a6b; transform: translateY(-1px); }
+    .card-icon-btn-view:hover { background: var(--color-btn-blue-hover); transform: translateY(-1px); }
 
     /* ── Compact view (4 × 2 grid, page size 8) ── */
     .vessel-grid--compact {
@@ -813,7 +832,7 @@ interface ListState {
 
     /* ── Pagination ── */
     .pagination-bar {
-      background: white;
+      background: var(--color-surface);
       border-radius: var(--radius);
       padding: 0 8px;
       box-shadow: var(--shadow-sm);

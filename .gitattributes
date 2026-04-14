@@ -1,0 +1,12 @@
+# Normalize line endings in git
+* text=auto
+
+# Force LF for files that must run on Linux (Docker)
+*.sh   text eol=lf
+*.sh   binary
+Dockerfile text eol=lf
+docker-compose*.yml text eol=lf
+*.json text eol=lf
+*.ftl  text eol=lf
+*.css  text eol=lf
+*.properties text eol=lf

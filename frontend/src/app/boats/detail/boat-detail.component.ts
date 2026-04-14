@@ -31,8 +31,8 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
 
       <!-- Breadcrumb -->
       <div class="breadcrumb">
-        <a routerLink="/boats" class="breadcrumb-link">
-          <mat-icon>arrow_back</mat-icon>
+        <a routerLink="/boats" class="breadcrumb-link" aria-label="Back to Fleet">
+          <mat-icon aria-hidden="true">arrow_back</mat-icon>
           Back to Fleet
         </a>
       </div>
@@ -79,12 +79,12 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
               Added {{ boat.createdAt | date:'MMM d, y' }}&nbsp;&middot;&nbsp;{{ boat.createdAt | date:'h:mm a' }}
             </div>
             <div class="action-buttons">
-              <a class="btn-edit" [routerLink]="['/boats', boat.id, 'edit']">
-                <mat-icon>edit</mat-icon>
+              <a class="btn-edit" [routerLink]="['/boats', boat.id, 'edit']" [attr.aria-label]="'Edit vessel ' + boat.name">
+                <mat-icon aria-hidden="true">edit</mat-icon>
                 Edit Vessel
               </a>
-              <button class="btn-delete" (click)="confirmDelete()">
-                <mat-icon>delete_outline</mat-icon>
+              <button class="btn-delete" (click)="confirmDelete()" [attr.aria-label]="'Delete vessel ' + boat.name">
+                <mat-icon aria-hidden="true">delete_outline</mat-icon>
                 Delete Vessel
               </button>
             </div>
@@ -135,7 +135,7 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
 
     /* State card */
     .state-card {
-      background: white;
+      background: var(--color-surface);
       border-radius: var(--radius);
       padding: 64px 32px;
       text-align: center;
@@ -254,9 +254,9 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
       border-radius: 20px;
       width: fit-content;
     }
-    .badge-active      { background: rgba(220,252,231,0.9); color: #16A34A; }
-    .badge-maintenance { background: rgba(254,243,199,0.9); color: #D97706; }
-    .badge-port        { background: rgba(219,234,254,0.9); color: #2563EB; }
+    .badge-active      { background: var(--color-status-active-bg);      color: var(--color-status-active); }
+    .badge-maintenance { background: var(--color-status-maintenance-bg); color: var(--color-status-maintenance); }
+    .badge-port        { background: var(--color-status-port-bg);        color: var(--color-status-port); }
 
     /* Action bar */
     .action-bar {
@@ -289,7 +289,7 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
       gap: 6px;
       height: 40px;
       padding: 0 20px;
-      background: #16A34A;
+      background: var(--color-btn-green);
       color: white;
       border-radius: 8px;
       text-decoration: none;
@@ -299,7 +299,7 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
       transition: background 0.15s;
     }
     .btn-edit mat-icon { font-size: 16px; width: 16px; height: 16px; }
-    .btn-edit:hover { background: #15803d; }
+    .btn-edit:hover { background: var(--color-btn-green-hover); }
 
     .btn-delete {
       display: flex;
@@ -318,7 +318,7 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
       transition: background 0.15s;
     }
     .btn-delete mat-icon { font-size: 16px; width: 16px; height: 16px; }
-    .btn-delete:hover { background: #dc2626; }
+    .btn-delete:hover { background: var(--color-btn-red-hover); }
 
     /* Info grid */
     .detail-layout {
@@ -332,7 +332,7 @@ import { StatusClassPipe } from '../../shared/pipes/status-class.pipe';
       gap: 16px;
     }
     .info-card {
-      background: white;
+      background: var(--color-surface);
       border-radius: var(--radius);
       padding: 20px 22px;
       box-shadow: var(--shadow-sm);

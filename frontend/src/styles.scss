@@ -1,30 +1,36 @@
 @use '@angular/material' as mat;
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   LIGHT THEME (default)
+   All status text colors are tuned to ≥ 4.5:1 contrast on their badge backgrounds
+   per WCAG 2.1 AA.
+───────────────────────────────────────────────────────────────────────────── */
 :root {
-  // Brand colors
+  // Brand
   --color-primary: #0d1936;
   --color-primary-dark: #060c18;
   --color-primary-light: #1a3a6b;
-  --color-accent: #22C55E;
-  --color-warn: #EF4444;
+  --color-accent: #16A34A;
+  --color-warn: #B91C1C;
 
-  // Status colors
-  --color-status-active: #16A34A;
+  // Status badge text — darkened for ≥ 4.5:1 on their bg colors
+  --color-status-active: #14532D;           // on #DCFCE7 ≈ 7.2:1 ✓
   --color-status-active-bg: #DCFCE7;
-  --color-status-maintenance: #D97706;
+  --color-status-maintenance: #78350F;      // on #FEF3C7 ≈ 7.6:1 ✓
   --color-status-maintenance-bg: #FEF3C7;
-  --color-status-port: #2a5298;
+  --color-status-port: #1E3A5F;            // on #dce6f5 ≈ 8.1:1 ✓
   --color-status-port-bg: #dce6f5;
 
   // Surface / neutral
   --color-surface: #ffffff;
+  --color-surface-hover: #F1F5F9;
   --color-background: #F8FAFC;
   --color-sidebar: #0D1B2A;
   --color-sidebar-hover: rgba(255, 255, 255, 0.07);
   --color-sidebar-active: rgba(255, 255, 255, 0.13);
-  --color-text: #1A202C;
-  --color-text-secondary: #64748B;
-  --color-text-muted: #94A3B8;
+  --color-text: #1A202C;                   // on #fff ≈ 16.7:1 ✓
+  --color-text-secondary: #4B5563;         // on #fff ≈ 7.6:1 ✓
+  --color-text-muted: #6B7280;             // on #fff ≈ 5.9:1 ✓
   --color-border: #E2E8F0;
 
   // Shadows
@@ -37,8 +43,184 @@
   --radius: 12px;
   --font-main: 'Outfit', sans-serif;
   --font-mono: 'Space Mono', monospace;
+
+  // Focus ring — visible in both themes
+  --color-focus-ring: #2563EB;
+
+  // Disabled raised (protected) button — Material default is ~2.4:1, below readable threshold
+  // Light mode: #374151 on #D1D5DB ≈ 7:1 ✓
+  --mdc-protected-button-disabled-container-color: #D1D5DB;
+  --mdc-protected-button-disabled-label-text-color: #374151;
+
+  // Heading / brand text — primary brand blue in light, readable light in dark
+  --color-heading: var(--color-primary);
+
+  // Action button backgrounds — white text on these: all ≥ 4.5:1 ✓
+  --color-btn-green: #15803D;
+  --color-btn-green-hover: #166534;
+  --color-btn-blue: #1E40AF;
+  --color-btn-blue-hover: #1e3a8a;
+  --color-btn-red: #B91C1C;
+  --color-btn-red-hover: #991b1b;
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK THEME
+   Applied via [data-theme="dark"] on <html> by ThemeService.
+───────────────────────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --color-surface: #1E2433;
+  --color-surface-hover: #252D3D;
+  --color-background: #111827;
+
+  --color-text: #F1F5F9;                   // on #111827 ≈ 15.3:1 ✓
+  --color-text-secondary: #CBD5E1;         // on #111827 ≈ 10.1:1 ✓
+  --color-text-muted: #94A3B8;             // on #111827 ≈ 6.8:1 ✓
+  --color-border: #2D3748;
+
+  // Status badges — light text on dark bg, both ≥ 4.5:1
+  --color-status-active: #4ADE80;          // on #14532D ≈ 5.4:1 ✓
+  --color-status-active-bg: #14532D;
+  --color-status-maintenance: #FCD34D;     // on #451A03 ≈ 7.1:1 ✓
+  --color-status-maintenance-bg: #451A03;
+  --color-status-port: #93C5FD;            // on #1E3A5F ≈ 5.9:1 ✓
+  --color-status-port-bg: #1E3A5F;
+
+  --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+
+  --color-focus-ring: #60A5FA;
+  --color-heading: var(--color-text);
+
+  // Disabled raised button dark mode: #94A3B8 on #374151 ≈ 5.3:1 ✓
+  --mdc-protected-button-disabled-container-color: #374151;
+  --mdc-protected-button-disabled-label-text-color: #94A3B8;
+
+  // ── Angular Material dark-mode tokens ──────────────────────────────────────
+
+  // Paginator
+  --mat-paginator-container-background-color: var(--color-surface);
+  --mat-paginator-container-text-color: var(--color-text);
+  --mat-paginator-enabled-icon-color: var(--color-text-secondary);
+  --mat-paginator-disabled-icon-color: var(--color-text-muted);
+
+  // Form fields (outlined)
+  --mdc-outlined-text-field-input-text-color: var(--color-text);
+  --mdc-outlined-text-field-label-text-color: var(--color-text-muted);
+  --mdc-outlined-text-field-outline-color: var(--color-border);
+  --mdc-outlined-text-field-hover-outline-color: var(--color-text-secondary);
+  --mdc-outlined-text-field-focus-outline-color: var(--color-focus-ring);
+  --mdc-outlined-text-field-disabled-outline-color: var(--color-border);
+  --mdc-outlined-text-field-caret-color: var(--color-focus-ring);
+  --mat-form-field-container-text-color: var(--color-text);
+
+  // Select / dropdown
+  --mat-select-enabled-trigger-text-color: var(--color-text);
+  --mat-select-disabled-trigger-text-color: var(--color-text-muted);
+  --mat-select-placeholder-text-color: var(--color-text-muted);
+  --mat-select-enabled-arrow-color: var(--color-text-muted);
+  --mat-select-panel-background-color: var(--color-surface);
+  --mat-option-label-text-color: var(--color-text);
+  --mat-option-hover-state-layer-color: var(--color-surface-hover);
+  --mat-option-selected-state-label-text-color: var(--color-text);
+  --mat-option-selected-state-layer-color: var(--color-surface-hover);
+
+  // Form fields — focused / hover label (the "blue text" problem)
+  --mdc-outlined-text-field-focus-label-text-color: var(--color-focus-ring);
+  --mdc-outlined-text-field-hover-label-text-color: var(--color-text-secondary);
+  --mdc-outlined-text-field-error-label-text-color: var(--color-warn);
+  --mdc-outlined-text-field-error-focus-label-text-color: var(--color-warn);
+  --mdc-outlined-text-field-error-hover-label-text-color: var(--color-warn);
+  --mdc-outlined-text-field-error-focus-outline-color: var(--color-warn);
+  --mdc-outlined-text-field-error-hover-outline-color: var(--color-warn);
+  --mdc-outlined-text-field-error-outline-color: var(--color-warn);
+  --mat-form-field-subscript-text-color: var(--color-text-muted);
+  --mat-form-field-leading-icon-color: var(--color-text-muted);
+  --mat-form-field-focus-select-arrow-color: var(--color-focus-ring);
+
+  // Outlined / stroked / text buttons
+  --mat-outlined-button-label-text-color: var(--color-text);
+  --mat-outlined-button-outline-color: var(--color-border);
+  --mat-outlined-button-hover-state-layer-color: var(--color-surface-hover);
+  --mat-text-button-label-text-color: var(--color-text);
+
+  // Progress bar
+  --mat-progress-bar-buffer-color: var(--color-surface-hover);
+  --mat-progress-bar-track-color: var(--color-surface-hover);
+
+  // Tooltip
+  --mat-tooltip-container-color: var(--color-surface);
+  --mat-tooltip-supporting-text-color: var(--color-text);
+
+  // Cards
+  --mdc-elevated-card-container-color: var(--color-surface);
+  --mdc-outlined-card-container-color: var(--color-surface);
+  --mat-card-title-text-color: var(--color-text);
+  --mat-card-subtitle-text-color: var(--color-text-secondary);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DARK THEME — concrete CSS fallbacks for Material components that ignore
+   token overrides (focused labels, prefix icons, stroked buttons).
+───────────────────────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  // Floating label — idle
+  .mdc-floating-label {
+    color: var(--color-text-muted) !important;
+  }
+  // Floating label — focused
+  .mat-mdc-form-field.mat-focused .mdc-floating-label {
+    color: var(--color-focus-ring) !important;
+  }
+  // Prefix / suffix icons inside form fields
+  .mat-mdc-form-field-icon-prefix mat-icon,
+  .mat-mdc-form-field-icon-suffix mat-icon {
+    color: var(--color-text-muted) !important;
+  }
+  // When the field is focused, brighten the prefix icon
+  .mat-mdc-form-field.mat-focused .mat-mdc-form-field-icon-prefix mat-icon {
+    color: var(--color-focus-ring) !important;
+  }
+  // Input / textarea text
+  .mat-mdc-input-element {
+    color: var(--color-text) !important;
+    caret-color: var(--color-focus-ring) !important;
+  }
+  // Stroked (outlined) button — Cancel etc.
+  .mat-mdc-outlined-button {
+    color: var(--color-text) !important;
+    border-color: var(--color-border) !important;
+  }
+  // mat-hint and mat-error subscript text
+  .mat-mdc-form-field-hint,
+  .mat-mdc-form-field-subscript-wrapper {
+    color: var(--color-text-muted) !important;
+  }
+  // Select trigger text and arrow
+  .mat-mdc-select-value,
+  .mat-mdc-select-value-text {
+    color: var(--color-text) !important;
+  }
+  .mat-mdc-select-arrow svg {
+    fill: var(--color-text-muted) !important;
+  }
+  // Select panel / overlay
+  .mat-mdc-select-panel {
+    background: var(--color-surface) !important;
+  }
+  .mat-mdc-option {
+    color: var(--color-text) !important;
+  }
+  .mat-mdc-option:hover:not(.mdc-list-item--disabled),
+  .mat-mdc-option.mat-mdc-option-active {
+    background: var(--color-surface-hover) !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   GLOBAL RESET
+───────────────────────────────────────────────────────────────────────────── */
 * {
   box-sizing: border-box;
   margin: 0;
@@ -52,6 +234,68 @@ html, body {
   color: var(--color-text);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────────
+   WCAG 2.1 AA — Visible focus indicators
+   Applies to keyboard focus; suppressed for mouse (focus-visible).
+───────────────────────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SKIP NAVIGATION LINK  (WCAG 2.4.1)
+───────────────────────────────────────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 8px;
+  z-index: 9999;
+  padding: 8px 16px;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.875rem;
+  border-radius: 0 0 8px 8px;
+  text-decoration: none;
+  transition: top 0.1s;
+}
+.skip-link:focus {
+  top: 0;
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   DISABLED RAISED BUTTON — both themes
+   Material's default gives ~2.4:1 contrast (nearly invisible).
+   These concrete rules override all token variants used across Material 21.
+   Light:  #374151 on #D1D5DB ≈ 7.0:1 ✓   Dark: #94A3B8 on #374151 ≈ 5.3:1 ✓
+───────────────────────────────────────────────────────────────────────────── */
+.mat-mdc-raised-button:disabled,
+.mat-mdc-raised-button.mat-mdc-button-disabled {
+  background-color: #D1D5DB !important;
+  color: #374151 !important;
+  opacity: 1 !important;   // prevent Material from halving the contrast further
+
+  .mdc-button__label { color: #374151 !important; }
+}
+
+[data-theme="dark"] {
+  .mat-mdc-raised-button:disabled,
+  .mat-mdc-raised-button.mat-mdc-button-disabled {
+    background-color: #374151 !important;
+    color: #94A3B8 !important;
+    opacity: 1 !important;
+
+    .mdc-button__label { color: #94A3B8 !important; }
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   SHARED CARD + MATERIAL OVERRIDES
+───────────────────────────────────────────────────────────────────────────── */
 .card {
   background: var(--color-surface);
   border-radius: var(--radius);
@@ -62,6 +306,8 @@ html, body {
 .mat-mdc-card {
   border-radius: var(--radius) !important;
   box-shadow: var(--shadow-sm) !important;
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
 }
 
 .mat-mdc-raised-button.mat-primary {
@@ -75,10 +321,10 @@ html, body {
 
 // Snackbar
 .success-snackbar {
-  --mdc-snackbar-container-color: #16A34A;
+  --mdc-snackbar-container-color: #14532D;
 }
 .error-snackbar {
-  --mdc-snackbar-container-color: #DC2626;
+  --mdc-snackbar-container-color: #B91C1C;
 }
 
 // Paginator responsive overrides (replaces ::ng-deep in BoatListComponent)

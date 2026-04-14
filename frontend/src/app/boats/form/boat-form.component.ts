@@ -135,7 +135,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
       margin-bottom: 24px;
       color: var(--color-text-secondary);
       font-size: 0.9rem;
-      a { color: var(--color-primary); text-decoration: none; }
+      a { color: var(--color-heading); text-decoration: none; }
       a:hover { text-decoration: underline; }
       mat-icon { font-size: 18px; width: 18px; height: 18px; }
     }
@@ -160,7 +160,7 @@ import { LoadingSpinnerComponent } from '../../shared/components/loading-spinner
     h1 {
       font-family: var(--font-mono);
       font-size: 1.4rem;
-      color: var(--color-primary);
+      color: var(--color-heading);
     }
     p { color: var(--color-text-secondary); font-size: 0.9rem; margin-top: 4px; }
     .boat-form {

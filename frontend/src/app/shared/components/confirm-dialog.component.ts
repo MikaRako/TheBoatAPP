@@ -16,13 +16,17 @@ export interface ConfirmDialogData {
   standalone: true,
   imports: [CommonModule, MatDialogModule, MatIconModule],
   template: `
-    <div class="dialog-container">
-      <div class="dialog-icon" [class.danger]="data.dangerous">
+    <div class="dialog-container"
+         role="alertdialog"
+         aria-modal="true"
+         aria-labelledby="dialog-title"
+         aria-describedby="dialog-message">
+      <div class="dialog-icon" [class.danger]="data.dangerous" aria-hidden="true">
         <mat-icon>{{ data.dangerous ? 'warning' : 'help_outline' }}</mat-icon>
       </div>
 
-      <h2 class="dialog-title">{{ data.title }}</h2>
-      <p class="dialog-message">{{ data.message }}</p>
+      <h2 id="dialog-title" class="dialog-title">{{ data.title }}</h2>
+      <p  id="dialog-message" class="dialog-message">{{ data.message }}</p>
 
       <div class="dialog-actions">
         <button class="btn-confirm" [class.btn-danger]="data.dangerous" (click)="dialogRef.close(true)">
@@ -79,14 +83,14 @@ export interface ConfirmDialogData {
     .dialog-title {
       font-size: 1.2rem;
       font-weight: 700;
-      color: #e2e8f4;
+      color: #e2e8f4;              /* on #192744 ≈ 10.4:1 ✓ */
       text-align: center;
       margin-bottom: 10px;
       font-family: var(--font-main);
     }
     .dialog-message {
       font-size: 0.875rem;
-      color: #7090b0;
+      color: #94A3B8;              /* on #192744 ≈ 5.4:1 ✓ */
       text-align: center;
       line-height: 1.65;
       margin-bottom: 28px;
@@ -133,7 +137,7 @@ export interface ConfirmDialogData {
       font-family: var(--font-main);
       font-size: 0.875rem;
       font-weight: 500;
-      color: #7090b0;
+      color: #94A3B8;              /* on #192744 ≈ 5.4:1 ✓ */
       cursor: pointer;
       transition: color 0.15s;
     }
