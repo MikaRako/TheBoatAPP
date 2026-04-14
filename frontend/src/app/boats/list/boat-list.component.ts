@@ -1031,6 +1031,8 @@ export class BoatListComponent implements OnInit, OnDestroy {
 
   confirmDelete(boat: Boat): void {
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      maxWidth: '95vw',
+      width: '460px',
       data: {
         title:       'Delete Vessel',
         message:     `Are you sure you want to delete "${boat.name}"? This action cannot be undone.`,
